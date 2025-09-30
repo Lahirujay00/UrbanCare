@@ -99,9 +99,7 @@ const userSchema = new mongoose.Schema({
   bloodType: {
     type: String,
     enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
-    required: function() {
-      return this.role === 'patient';
-    }
+    required: false // Allow patients to add this information later
   },
   allergies: [{
     allergen: String,
@@ -123,39 +121,27 @@ const userSchema = new mongoose.Schema({
   // Professional Information (for healthcare staff)
   licenseNumber: {
     type: String,
-    required: function() {
-      return ['doctor', 'staff'].includes(this.role);
-    }
+    required: false // Allow completion during profile setup
   },
   specialization: {
     type: String,
-    required: function() {
-      return this.role === 'doctor';
-    }
+    required: false // Allow completion during profile setup
   },
   department: {
     type: String,
-    required: function() {
-      return ['doctor', 'staff', 'manager'].includes(this.role);
-    }
+    required: false // Allow completion during profile setup
   },
   yearsOfExperience: {
     type: Number,
-    required: function() {
-      return this.role === 'doctor';
-    }
+    required: false // Allow completion during profile setup
   },
   qualification: {
     type: String,
-    required: function() {
-      return this.role === 'doctor';
-    }
+    required: false // Allow completion during profile setup
   },
   consultationFee: {
     type: Number,
-    required: function() {
-      return this.role === 'doctor';
-    }
+    required: false // Allow completion during profile setup
   },
   availableHours: {
     monday: { start: String, end: String, available: Boolean },
@@ -179,6 +165,40 @@ const userSchema = new mongoose.Schema({
   passwordResetExpires: Date,
   emailVerificationToken: String,
   emailVerificationExpires: Date,
+  
+  // Enhanced Security
+  loginAttempts: {
+    type: Number,
+    default: 0
+  },
+  lockoutUntil: Date,
+  twoFactorEnabled: {
+    type: Boolean,
+    default: false
+  },
+  twoFactorSecret: {
+    type: String,
+    select: false
+  },
+  trustedDevices: [{
+    fingerprint: String,
+    lastUsed: Date,
+    trusted: {
+      type: Boolean,
+      default: false
+    },
+    userAgent: String,
+    platform: String
+  }],
+  sessionTokens: [{
+    token: String,
+    device: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    expiresAt: Date
+  }],
   
   // Preferences
   notifications: {

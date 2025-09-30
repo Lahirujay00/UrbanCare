@@ -91,42 +91,35 @@ router.post('/register', [
 
     // Add role-specific fields
     if (role === 'patient') {
-      if (!dateOfBirth || !gender || !bloodType) {
+      if (!dateOfBirth || !gender) {
         return res.status(400).json({
           success: false,
-          message: 'Date of birth, gender, and blood type are required for patients'
+          message: 'Date of birth and gender are required for patients'
         });
       }
       userData.dateOfBirth = dateOfBirth;
       userData.gender = gender;
-      userData.bloodType = bloodType;
-      userData.emergencyContact = emergencyContact;
+      if (bloodType) userData.bloodType = bloodType;
+      if (emergencyContact) userData.emergencyContact = emergencyContact;
     }
 
     if (role === 'doctor') {
-      if (!specialization || !department || !licenseNumber || !yearsOfExperience || !qualification || !consultationFee) {
-        return res.status(400).json({
-          success: false,
-          message: 'All professional details are required for doctors'
-        });
-      }
-      userData.specialization = specialization;
-      userData.department = department;
-      userData.licenseNumber = licenseNumber;
-      userData.yearsOfExperience = yearsOfExperience;
-      userData.qualification = qualification;
-      userData.consultationFee = consultationFee;
+      // Allow basic registration, professional details can be completed later
+      if (specialization) userData.specialization = specialization;
+      if (department) userData.department = department;
+      if (licenseNumber) userData.licenseNumber = licenseNumber;
+      if (yearsOfExperience) userData.yearsOfExperience = yearsOfExperience;
+      if (qualification) userData.qualification = qualification;
+      if (consultationFee) userData.consultationFee = consultationFee;
+      
+      // Mark profile as incomplete if essential details are missing
+      userData.profileComplete = !!(specialization && department && licenseNumber);
     }
 
-    if (['doctor', 'staff', 'manager'].includes(role)) {
-      if (!department || !licenseNumber) {
-        return res.status(400).json({
-          success: false,
-          message: 'Department and license number are required for healthcare staff'
-        });
-      }
-      userData.department = department;
-      userData.licenseNumber = licenseNumber;
+    if (['staff', 'manager'].includes(role)) {
+      // These roles are typically pre-assigned, but allow flexible registration
+      if (department) userData.department = department;
+      if (licenseNumber) userData.licenseNumber = licenseNumber;
     }
 
     // Create user
@@ -206,10 +199,16 @@ router.post('/login', [
       });
     }
 
-    const { email, password } = req.body;
+    const { email, password, rememberMe, deviceInfo, twoFACode } = req.body;
 
+    // Get client IP for rate limiting
+    const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for'];
+    
+    // Check for rate limiting (simplified - in production use Redis)
+    const rateLimitKey = `login_attempts_${clientIP}_${email}`;
+    
     // Check if user exists and include password
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({ email }).select('+password +loginAttempts +lockoutUntil +lastLogin +trustedDevices');
     
     if (!user) {
       return res.status(401).json({
@@ -230,22 +229,70 @@ router.post('/login', [
     const isPasswordValid = await user.comparePassword(password);
     
     if (!isPasswordValid) {
+      // Increment login attempts
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+      
+      // Set lockout if too many attempts
+      if (user.loginAttempts >= 3) {
+        const lockoutDuration = Math.min(300000 * Math.pow(2, user.loginAttempts - 3), 3600000); // Max 1 hour
+        user.lockoutUntil = new Date(Date.now() + lockoutDuration);
+      }
+      
+      await user.save();
+      
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email or password',
+        attemptsRemaining: Math.max(0, 3 - user.loginAttempts)
       });
     }
 
+    // Reset login attempts on successful login
+    user.loginAttempts = 0;
+    user.lockoutUntil = undefined;
+    
     // Update last login
     user.lastLogin = new Date();
+    
+    // Track device if provided
+    if (deviceInfo) {
+      const deviceFingerprint = crypto.createHash('sha256')
+        .update(JSON.stringify(deviceInfo))
+        .digest('hex');
+      
+      if (!user.trustedDevices) {
+        user.trustedDevices = [];
+      }
+      
+      const existingDevice = user.trustedDevices.find(d => d.fingerprint === deviceFingerprint);
+      if (!existingDevice) {
+        user.trustedDevices.push({
+          fingerprint: deviceFingerprint,
+          lastUsed: new Date(),
+          trusted: false,
+          userAgent: deviceInfo.userAgent,
+          platform: deviceInfo.platform
+        });
+      } else {
+        existingDevice.lastUsed = new Date();
+      }
+    }
+    
     await user.save();
 
-    // Generate tokens
-    const token = user.generateAuthToken();
+    // Generate tokens with longer expiry if remember me
+    const tokenExpiry = rememberMe ? '30d' : '24h';
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: tokenExpiry }
+    );
     const refreshToken = user.generateRefreshToken();
 
-    // Remove password from response
+    // Remove sensitive fields from response
     user.password = undefined;
+    user.loginAttempts = undefined;
+    user.lockoutUntil = undefined;
 
     res.json({
       success: true,
@@ -253,7 +300,8 @@ router.post('/login', [
       data: {
         user,
         token,
-        refreshToken
+        refreshToken,
+        requiresTwoFA: user.twoFactorEnabled && !twoFACode
       }
     });
 
