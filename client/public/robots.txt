@@ -1,0 +1,6 @@
+# UrbanCare Favicons and Images
+# These are placeholder files that should be replaced with actual medical/healthcare themed icons
+
+favicon.ico
+logo192.png
+logo512.png
