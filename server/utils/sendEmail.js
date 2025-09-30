@@ -6,7 +6,7 @@ const sendEmail = async (options) => {
 
   if (process.env.NODE_ENV === 'production') {
     // Production email service (e.g., SendGrid, Amazon SES)
-    transporter = nodemailer.createTransporter({
+    transporter = nodemailer.createTransport({
       service: process.env.EMAIL_SERVICE,
       auth: {
         user: process.env.EMAIL_USER,
@@ -15,7 +15,7 @@ const sendEmail = async (options) => {
     });
   } else {
     // Development - use Ethereal Email for testing
-    transporter = nodemailer.createTransporter({
+    transporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       auth: {

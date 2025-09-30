@@ -107,6 +107,12 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Handle common static file requests to reduce noise in logs
+app.get('/favicon.ico', (req, res) => res.status(204).end());
+app.get('/logo192.png', (req, res) => res.status(204).end());
+app.get('/manifest.json', (req, res) => res.status(204).end());
+app.get('/*.hot-update.json', (req, res) => res.status(204).end());
+
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
