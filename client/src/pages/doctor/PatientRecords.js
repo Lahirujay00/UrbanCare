@@ -323,89 +323,149 @@ const PatientRecords = () => {
                   </div>
                   
                   <div className="p-6">
+                    {/* Overview Tab */}
                     {activeTab === 'overview' && (
-                      <div className="space-y-6">                {/* Patient Overview */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl flex items-center justify-center">
-                        <UserIcon className="w-10 h-10 text-white" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold text-gray-900">{selectedPatient.name}</h2>
-                        <p className="text-gray-600">{selectedPatient.age} years old • {selectedPatient.gender}</p>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedPatient.status)}`}>
-                            {selectedPatient.status.replace('-', ' ').toUpperCase()}
-                          </span>
-                          <span className="px-3 py-1 bg-gray-100 text-gray-800 text-sm font-medium rounded-full">
-                            Blood Type: {selectedPatient.bloodType}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex space-x-2">
-                      <button className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium shadow-md flex items-center space-x-2">
-                        <PencilIcon className="w-4 h-4" />
-                        <span>Edit</span>
-                      </button>
-                      <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-md flex items-center space-x-2">
-                        <ArrowDownTrayIcon className="w-4 h-4" />
-                        <span>Export</span>
-                      </button>
-                    </div>
-                  </div>
+                      <div className="space-y-6">
+                        {/* Patient Overview */}
+                        <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+                          <div className="flex items-start justify-between mb-6">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-20 h-20 bg-gradient-to-br from-green-500 to-teal-600 rounded-2xl flex items-center justify-center">
+                                <UserIcon className="w-10 h-10 text-white" />
+                              </div>
+                              <div>
+                                <h2 className="text-2xl font-bold text-gray-900">{selectedPatient.name}</h2>
+                                <p className="text-gray-600">{selectedPatient.age} years old • {selectedPatient.gender}</p>
+                                <div className="flex items-center space-x-2 mt-2">
+                                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedPatient.status)}`}>
+                                    {selectedPatient.status.replace('-', ' ').toUpperCase()}
+                                  </span>
+                                  <span className="px-3 py-1 bg-gray-100 text-gray-800 text-sm font-medium rounded-full">
+                                    Blood Type: {selectedPatient.bloodType}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <button className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium shadow-md flex items-center space-x-2">
+                                <PencilIcon className="w-4 h-4" />
+                                <span>Edit</span>
+                              </button>
+                              <button className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-md flex items-center space-x-2">
+                                <ArrowDownTrayIcon className="w-4 h-4" />
+                                <span>Export</span>
+                              </button>
+                            </div>
+                          </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-3">Contact Information</h3>
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2">
-                          <PhoneIcon className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">{selectedPatient.phone}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <EnvelopeIcon className="w-4 h-4 text-gray-500" />
-                          <span className="text-sm text-gray-600">{selectedPatient.email}</span>
-                        </div>
-                        <div className="flex items-start space-x-2">
-                          <svg className="w-4 h-4 text-gray-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          <span className="text-sm text-gray-600">{selectedPatient.address}</span>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <ExclamationTriangleIcon className="w-4 h-4 text-red-500" />
-                          <span className="text-sm text-gray-600">Emergency: {selectedPatient.emergencyContact}</span>
-                        </div>
-                      </div>
-                    </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                              <h3 className="font-semibold text-gray-900 mb-3">Contact Information</h3>
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <PhoneIcon className="w-4 h-4 text-gray-500" />
+                                  <span className="text-sm text-gray-600">{selectedPatient.phone}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <EnvelopeIcon className="w-4 h-4 text-gray-500" />
+                                  <span className="text-sm text-gray-600">{selectedPatient.email}</span>
+                                </div>
+                                <div className="flex items-start space-x-2">
+                                  <svg className="w-4 h-4 text-gray-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                  <span className="text-sm text-gray-600">{selectedPatient.address}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <ExclamationTriangleIcon className="w-4 h-4 text-red-500" />
+                                  <span className="text-sm text-gray-600">Emergency: {selectedPatient.emergencyContact}</span>
+                                </div>
+                              </div>
+                            </div>
 
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-3">Medical Information</h3>
-                      <div className="space-y-2">
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">Allergies:</span>
-                          <p className="text-sm text-red-600">{selectedPatient.allergies.join(', ')}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">Conditions:</span>
-                          <p className="text-sm text-gray-600">{selectedPatient.conditions.join(', ')}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">Last Visit:</span>
-                          <p className="text-sm text-gray-600">{selectedPatient.lastVisit}</p>
-                        </div>
-                        <div>
-                          <span className="text-sm font-medium text-gray-700">Next Appointment:</span>
-                          <p className="text-sm text-gray-600">{selectedPatient.nextAppointment}</p>
+                            <div>
+                              <h3 className="font-semibold text-gray-900 mb-3">Medical Information</h3>
+                              <div className="space-y-2">
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">Allergies:</span>
+                                  <p className="text-sm text-red-600">{selectedPatient.allergies.join(', ')}</p>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">Conditions:</span>
+                                  <p className="text-sm text-gray-600">{selectedPatient.conditions.join(', ')}</p>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">Last Visit:</span>
+                                  <p className="text-sm text-gray-600">{selectedPatient.lastVisit}</p>
+                                </div>
+                                <div>
+                                  <span className="text-sm font-medium text-gray-700">Next Appointment:</span>
+                                  <p className="text-sm text-gray-600">{selectedPatient.nextAppointment}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
-                </div>
-                
+                    )}
+
+                    {/* Medical History Tab */}
+                    {activeTab === 'history' && (
+                      <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold text-gray-900">Medical History</h3>
+                          <button className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center space-x-2">
+                            <PlusIcon className="w-4 h-4" />
+                            <span>Add Record</span>
+                          </button>
+                        </div>
+
+                        <div className="space-y-4">
+                          {selectedPatient.medicalHistory?.map((record) => (
+                            <div key={record.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between mb-4">
+                                <div className="flex items-center space-x-3">
+                                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                                    <DocumentTextIcon className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div>
+                                    <p className="font-semibold text-gray-900">{record.type}</p>
+                                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                                      <CalendarIcon className="w-4 h-4" />
+                                      <span>{record.date}</span>
+                                      <span>•</span>
+                                      <span>{record.provider}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2">
+                                  <button className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
+                                    <EyeIcon className="w-4 h-4" />
+                                  </button>
+                                  <button className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors">
+                                    <ArrowDownTrayIcon className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="bg-gray-50 p-4 rounded-lg mb-4">
+                                <h4 className="font-medium text-gray-900 mb-2">Details</h4>
+                                <p className="text-gray-700 text-sm">{record.details}</p>
+                              </div>
+
+                              {record.diagnosis && (
+                                <div className="bg-red-50 p-4 rounded-lg">
+                                  <h4 className="font-medium text-red-900 mb-2">Diagnosis</h4>
+                                  <p className="text-red-800 text-sm">{record.diagnosis}</p>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Prescription History Tab */}
                     {activeTab === 'prescriptions' && (
                       <div className="space-y-6">
@@ -416,7 +476,7 @@ const PatientRecords = () => {
                             <span>New Prescription</span>
                           </button>
                         </div>
-                        
+
                         <div className="space-y-4">
                           {selectedPatient.prescriptions?.map((prescription) => (
                             <div key={prescription.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -444,7 +504,7 @@ const PatientRecords = () => {
                                   </button>
                                 </div>
                               </div>
-                              
+
                               <div className="bg-gray-50 p-4 rounded-lg mb-4">
                                 <h4 className="font-medium text-gray-900 mb-3">Medications</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -457,7 +517,7 @@ const PatientRecords = () => {
                                   ))}
                                 </div>
                               </div>
-                              
+
                               {prescription.instructions && (
                                 <div className="bg-blue-50 p-4 rounded-lg">
                                   <h4 className="font-medium text-blue-900 mb-2">Instructions</h4>
@@ -469,7 +529,7 @@ const PatientRecords = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Lab Results Tab */}
                     {activeTab === 'labs' && (
                       <div className="space-y-6">
@@ -480,7 +540,7 @@ const PatientRecords = () => {
                             <span>Order Lab</span>
                           </button>
                         </div>
-                        
+
                         <div className="space-y-4">
                           {selectedPatient.labResults?.map((lab) => (
                             <div key={lab.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -508,7 +568,7 @@ const PatientRecords = () => {
                                   </button>
                                 </div>
                               </div>
-                              
+
                               <div className="bg-gray-50 p-4 rounded-lg mb-4">
                                 <h4 className="font-medium text-gray-900 mb-3">Results</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -536,7 +596,7 @@ const PatientRecords = () => {
                                   ))}
                                 </div>
                               </div>
-                              
+
                               {lab.notes && (
                                 <div className="bg-yellow-50 p-4 rounded-lg">
                                   <h4 className="font-medium text-yellow-900 mb-2">Notes</h4>
@@ -548,13 +608,13 @@ const PatientRecords = () => {
                         </div>
                       </div>
                     )}
-                    
+
                     {/* Appointments Tab */}
                     {activeTab === 'appointments' && (
                       <div className="space-y-6">
                         <div className="flex items-center justify-between">
                           <h3 className="text-lg font-bold text-gray-900">Upcoming Appointments</h3>
-                          <button 
+                          <button
                             onClick={() => setShowScheduleModal(true)}
                             className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center space-x-2"
                           >
@@ -562,7 +622,7 @@ const PatientRecords = () => {
                             <span>Schedule Appointment</span>
                           </button>
                         </div>
-                        
+
                         <div className="space-y-4">
                           {selectedPatient.appointments?.map((appointment) => (
                             <div key={appointment.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow">
@@ -598,93 +658,6 @@ const PatientRecords = () => {
                         </div>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Vital Signs */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-bold text-gray-900">Current Vital Signs</h3>
-                    <button className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-lg hover:bg-green-200 transition-colors">
-                      Update Vitals
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                    <div className="text-center p-3 bg-gradient-to-br from-red-50 to-red-100 rounded-xl">
-                      <div className="text-lg font-bold text-red-700">{selectedPatient.vitals.bloodPressure}</div>
-                      <div className="text-xs text-red-600">Blood Pressure</div>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
-                      <div className="text-lg font-bold text-blue-700">{selectedPatient.vitals.heartRate}</div>
-                      <div className="text-xs text-blue-600">Heart Rate</div>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl">
-                      <div className="text-lg font-bold text-yellow-700">{selectedPatient.vitals.temperature}</div>
-                      <div className="text-xs text-yellow-600">Temperature</div>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                      <div className="text-lg font-bold text-green-700">{selectedPatient.vitals.weight}</div>
-                      <div className="text-xs text-green-600">Weight</div>
-                    </div>
-                    <div className="text-center p-3 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
-                      <div className="text-lg font-bold text-purple-700">{selectedPatient.vitals.height}</div>
-                      <div className="text-xs text-purple-600">Height</div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Medical Records */}
-                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h3 className="text-lg font-bold text-gray-900">Medical Records</h3>
-                    <button className="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-medium flex items-center space-x-2">
-                      <PlusIcon className="w-4 h-4" />
-                      <span>Add Record</span>
-                    </button>
-                  </div>
-                  <div className="space-y-4">
-                    {selectedPatient.records.map((record) => (
-                      <div key={record.id} className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                              <DocumentTextIcon className="w-5 h-5 text-white" />
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-gray-900">{record.type}</h4>
-                              <div className="flex items-center space-x-2 text-sm text-gray-500">
-                                <CalendarIcon className="w-4 h-4" />
-                                <span>{record.date}</span>
-                                <span>•</span>
-                                <span>{record.doctor}</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex space-x-2">
-                            <button className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors">
-                              <EyeIcon className="w-4 h-4" />
-                            </button>
-                            <button className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition-colors">
-                              <PencilIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                          <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700">Diagnosis:</span>
-                            <p className="text-sm text-gray-600">{record.diagnosis}</p>
-                          </div>
-                          <div className="mb-2">
-                            <span className="text-sm font-medium text-gray-700">Treatment:</span>
-                            <p className="text-sm text-gray-600">{record.treatment}</p>
-                          </div>
-                          <div>
-                            <span className="text-sm font-medium text-gray-700">Notes:</span>
-                            <p className="text-sm text-gray-600">{record.notes}</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </div>
               </div>
