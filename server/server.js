@@ -43,7 +43,42 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => console.log('✅ MongoDB connected successfully'))
+.then(async () => {
+  console.log('✅ MongoDB connected successfully');
+
+  // Auto-setup admin user if it doesn't exist
+  try {
+    const User = require('./models/User');
+
+    const existingAdmin = await User.findOne({ email: 'admin@urbancare.com' });
+    if (!existingAdmin) {
+      const adminUser = new User({
+        firstName: 'System',
+        lastName: 'Administrator',
+        email: 'admin@urbancare.com',
+        password: 'Admin123!', // Plain password - will be hashed by pre-save middleware
+        phone: '+1-555-0100',
+        role: 'admin',
+        isActive: true,
+        isEmailVerified: true,
+        address: {
+          street: '123 Admin Street',
+          city: 'Healthcare City',
+          state: 'HC',
+          zipCode: '12345',
+          country: 'USA'
+        }
+      });
+
+      await adminUser.save();
+      console.log('✅ Default admin user created automatically');
+      console.log('📧 Email: admin@urbancare.com');
+      console.log('🔑 Password: Admin123!');
+    }
+  } catch (error) {
+    console.error('❌ Error auto-creating admin user:', error.message);
+  }
+})
 .catch((err) => console.error('❌ MongoDB connection error:', err));
 
 // Security middleware

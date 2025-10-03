@@ -120,7 +120,8 @@ UrbanCare/
 - `npm run dev` - Start development server with nodemon
 - `npm start` - Start production server
 - `npm test` - Run tests
-- `npm run seed` - Seed database with sample data
+- `npm run setup-admin` - Create default admin user
+- `npm run lint` - Run ESLint
 
 **Client:**
 - `npm start` - Start development server
@@ -145,6 +146,21 @@ EMAIL_SERVICE=your_email_service
 ```
 REACT_APP_API_URL=http://localhost:5000/api
 REACT_APP_STRIPE_PUBLIC_KEY=your_stripe_public_key
+```
+
+### Default Admin Credentials
+
+The application automatically creates a default admin user on first startup:
+
+```
+📧 Email: admin@urbancare.com
+🔑 Password: Admin123!
+```
+
+**To manually create/reset admin credentials:**
+```bash
+cd server
+npm run setup-admin
 ```
 
 ## 🏗️ Architecture
