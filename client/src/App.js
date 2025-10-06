@@ -45,6 +45,9 @@ import UserManagement from './pages/manager/UserManagement';
 import AdminDashboard from './pages/admin/DashboardFull';
 import SystemSettings from './pages/admin/SystemSettings';
 
+// Shared Pages
+import AppointmentDetails from './pages/AppointmentDetails';
+
 // Create a client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -196,6 +199,15 @@ function App() {
                 <ProtectedRoute allowedRoles={['patient']}>
                   <Layout>
                     <ProfileEditor />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+
+              {/* Shared Routes */}
+              <Route path="/appointments/:id" element={
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'staff', 'manager', 'admin']}>
+                  <Layout>
+                    <AppointmentDetails />
                   </Layout>
                 </ProtectedRoute>
               } />

@@ -12,6 +12,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { appointmentAPI, medicalRecordsAPI } from '../../services/api';
+import ChatBot from '../../components/ChatBot/ChatBot';
 import toast from 'react-hot-toast';
 
 const DoctorDashboard = () => {
@@ -33,28 +34,30 @@ const DoctorDashboard = () => {
   }, []);
 
   const fetchDoctorData = async () => {
+    // Get today's date (move outside try block)
+    const today = new Date().toISOString().split('T')[0];
+    
     try {
       setLoading(true);
       
-      // Get today's date
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Fetch all appointments
-      const response = await appointmentAPI.getAppointments();
+      // Fetch doctor's appointments
+      const response = await appointmentAPI.getDoctorAppointments(user._id);
       
       if (response.data.success) {
         const allAppointments = response.data.data.appointments || [];
         
         // Filter today's appointments
-        const todayAppts = allAppointments.filter(apt => 
-          apt.appointmentDate.startsWith(today)
-        );
+        const todayAppts = allAppointments.filter(apt => {
+          const aptDate = new Date(apt.appointmentDate).toISOString().split('T')[0];
+          return aptDate === today;
+        });
         
         // Filter upcoming appointments (not today)
-        const upcomingAppts = allAppointments.filter(apt => 
-          !apt.appointmentDate.startsWith(today) && 
-          new Date(apt.appointmentDate) > new Date()
-        );
+        const upcomingAppts = allAppointments.filter(apt => {
+          const aptDate = new Date(apt.appointmentDate);
+          const todayDate = new Date(today);
+          return aptDate > todayDate;
+        });
         
         setTodayAppointments(todayAppts);
         setUpcomingAppointments(upcomingAppts);
@@ -78,7 +81,20 @@ const DoctorDashboard = () => {
       
     } catch (error) {
       console.error('Error fetching doctor data:', error);
-      toast.error('Failed to load dashboard data');
+      // Fallback to general appointments if doctor-specific fails
+      try {
+        const fallbackResponse = await appointmentAPI.getAppointments();
+        if (fallbackResponse.data.success) {
+          const allAppointments = fallbackResponse.data.data.appointments || [];
+          const todayAppts = allAppointments.filter(apt => 
+            apt.appointmentDate.startsWith(today)
+          );
+          setTodayAppointments(todayAppts);
+          setStats(prev => ({ ...prev, today: todayAppts.length }));
+        }
+      } catch (fallbackError) {
+        toast.error('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
@@ -197,11 +213,21 @@ const DoctorDashboard = () => {
                             {appointment.patient?.firstName} {appointment.patient?.lastName}
                           </h3>
                           <p className="text-sm text-gray-600">
-                            {appointment.appointmentTime} • {appointment.appointmentType}
+                            {appointment.appointmentTime || 'Time TBD'} • {appointment.appointmentType || 'Consultation'}
                           </p>
                           <p className="text-sm text-gray-500 mt-1">
-                            Chief Complaint: {appointment.chiefComplaint}
+                            Chief Complaint: {appointment.chiefComplaint || 'General checkup'}
                           </p>
+                          {appointment.patient?.email && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              📧 {appointment.patient.email}
+                            </p>
+                          )}
+                          {appointment.patient?.phone && (
+                            <p className="text-xs text-gray-400">
+                              📞 {appointment.patient.phone}
+                            </p>
+                          )}
                           <div className="mt-2 flex items-center space-x-2">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
@@ -264,9 +290,17 @@ const DoctorDashboard = () => {
                           </>
                         )}
                         <button
-                          onClick={() => navigate(`/doctor/appointments/${appointment._id}`)}
+                          onClick={() => navigate(`/doctor/patient/${appointment.patient?._id}`)}
+                          className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition-colors text-sm"
+                        >
+                          <UserIcon className="w-4 h-4 inline mr-1" />
+                          Patient Profile
+                        </button>
+                        <button
+                          onClick={() => navigate(`/appointments/${appointment._id}`)}
                           className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                         >
+                          <EyeIcon className="w-4 h-4 inline mr-1" />
                           View Details
                         </button>
                       </div>
@@ -327,6 +361,9 @@ const DoctorDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* ChatBot Component */}
+      <ChatBot />
     </div>
   );
 };

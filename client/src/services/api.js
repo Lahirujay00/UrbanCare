@@ -101,6 +101,8 @@ export const appointmentAPI = {
   confirmPayment: (id, paymentData) => api.post(`/appointments/${id}/confirm-payment`, paymentData),
   scheduleWithoutPayment: (id) => api.post(`/appointments/${id}/schedule-pay-later`),
   processHospitalPayment: (id, paymentData) => api.post(`/appointments/${id}/hospital-payment`, paymentData),
+  getDoctorAppointments: (doctorId, params) => api.get(`/appointments/doctor/${doctorId}`, { params }),
+  getPatientAppointments: (patientId, params) => api.get(`/appointments/patient/${patientId}`, { params }),
 };
 
 // Medical Records API endpoints

@@ -61,8 +61,8 @@ const PatientDashboard = () => {
     try {
       setLoading(true);
       
-      // Fetch appointments
-      const appointmentsRes = await appointmentAPI.getAppointments({
+      // Fetch patient's appointments
+      const appointmentsRes = await appointmentAPI.getPatientAppointments(user._id, {
         status: 'scheduled,confirmed'
       });
       
@@ -100,36 +100,46 @@ const PatientDashboard = () => {
       
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
+      // Fallback to general appointments if patient-specific fails
+      try {
+        const fallbackRes = await appointmentAPI.getAppointments({
+          status: 'scheduled,confirmed'
+        });
+        if (fallbackRes.data.success) {
+          const allAppts = fallbackRes.data.data.appointments || [];
+          setAppointments(allAppts);
+          setStats(prev => ({ ...prev, upcomingAppointments: allAppts.length }));
+        }
+      } catch (fallbackError) {
+        toast.error('Failed to load dashboard data');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  // Format date
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric' 
-    });
-  };
-
-  // Handle appointment cancellation
   const handleCancelAppointment = async (appointmentId) => {
     if (!window.confirm('Are you sure you want to cancel this appointment?')) {
       return;
     }
 
     try {
-      await appointmentAPI.cancelAppointment(appointmentId, 'Cancelled by patient');
+      await appointmentAPI.updateAppointment(appointmentId, { status: 'cancelled' });
       toast.success('Appointment cancelled successfully');
       fetchDashboardData(); // Refresh data
     } catch (error) {
       console.error('Error cancelling appointment:', error);
       toast.error('Failed to cancel appointment');
     }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   if (loading) {
@@ -304,10 +314,10 @@ const PatientDashboard = () => {
                             </div>
                             <div>
                               <h3 className="text-lg font-bold text-gray-900 mb-1">
-                                {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                                Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
                               </h3>
                               <p className="text-sm text-blue-700 font-medium mb-1">
-                                {appointment.doctor?.specialization} • {appointment.appointmentType}
+                                {appointment.doctor?.specialization || 'General Practice'} • {appointment.appointmentType || 'Consultation'}
                               </p>
                               <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">

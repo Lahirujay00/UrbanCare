@@ -24,7 +24,10 @@ router.get('/', auth, async (req, res) => {
     // Additional filters
     const { status, date, doctorId, patientId } = req.query;
     
-    if (status) query.status = status;
+    if (status) {
+      const statusArray = status.split(',');
+      query.status = { $in: statusArray };
+    }
     if (date) {
       const startDate = new Date(date);
       const endDate = new Date(date);
@@ -688,6 +691,108 @@ router.post('/:id/checkin', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Check-in error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get patient's appointments
+// @route   GET /api/appointments/patient/:patientId
+// @access  Private
+router.get('/patient/:patientId', auth, async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { status, limit = 50 } = req.query;
+    
+    // Check if user can access this patient's appointments
+    if (req.user.role === 'patient' && req.user.id !== patientId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access these appointments'
+      });
+    }
+    
+    let query = { patient: patientId };
+    
+    // Filter by status if provided
+    if (status) {
+      const statusArray = status.split(',');
+      query.status = { $in: statusArray };
+    }
+    
+    const appointments = await Appointment.find(query)
+      .populate('doctor', 'firstName lastName specialization email phone')
+      .populate('patient', 'firstName lastName email phone')
+      .sort({ appointmentDate: -1 })
+      .limit(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: {
+        appointments,
+        count: appointments.length
+      }
+    });
+  } catch (error) {
+    console.error('Get patient appointments error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get doctor's appointments
+// @route   GET /api/appointments/doctor/:doctorId
+// @access  Private
+router.get('/doctor/:doctorId', auth, async (req, res) => {
+  try {
+    const { doctorId } = req.params;
+    const { status, date, limit = 50 } = req.query;
+    
+    // Check if user can access this doctor's appointments
+    if (req.user.role === 'doctor' && req.user.id !== doctorId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to access these appointments'
+      });
+    }
+    
+    let query = { doctor: doctorId };
+    
+    // Filter by status if provided
+    if (status) {
+      const statusArray = status.split(',');
+      query.status = { $in: statusArray };
+    }
+    
+    // Filter by date if provided
+    if (date) {
+      const startDate = new Date(date);
+      const endDate = new Date(date);
+      endDate.setDate(endDate.getDate() + 1);
+      query.appointmentDate = { $gte: startDate, $lt: endDate };
+    }
+    
+    const appointments = await Appointment.find(query)
+      .populate('doctor', 'firstName lastName specialization email phone')
+      .populate('patient', 'firstName lastName email phone dateOfBirth')
+      .sort({ appointmentDate: 1 })
+      .limit(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: {
+        appointments,
+        count: appointments.length
+      }
+    });
+  } catch (error) {
+    console.error('Get doctor appointments error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
