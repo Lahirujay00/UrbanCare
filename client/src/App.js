@@ -19,7 +19,7 @@ import ResetPassword from './pages/auth/ResetPassword';
 import VerifyEmail from './pages/auth/VerifyEmail';
 
 // Patient Pages
-import PatientDashboard from './pages/patient/DashboardConnected';
+import PatientDashboard from './pages/patient/PatientDashboardEnhanced';
 import AppointmentBooking from './pages/patient/AppointmentBooking';
 import MedicalRecords from './pages/patient/MedicalRecords';
 import DigitalHealthCard from './pages/patient/DigitalHealthCard';
@@ -36,6 +36,7 @@ import DoctorProfileEditor from './pages/doctor/ProfileEditor';
 // Staff Pages
 import StaffDashboard from './pages/staff/DashboardFull';
 import PatientVerification from './pages/staff/PatientVerification';
+
 // Manager Pages
 import ManagerDashboard from './pages/manager/DashboardFull';
 import Reports from './pages/manager/Reports';
@@ -163,10 +164,26 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              <Route path="/appointments/book" element={
+                <ProtectedRoute allowedRoles={['patient']}>
+                  <Layout>
+                    <AppointmentBooking />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
               <Route path="/book-appointment" element={
                 <ProtectedRoute allowedRoles={['patient']}>
                   <Layout>
                     <AppointmentBooking />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/records" element={
+                <ProtectedRoute allowedRoles={['patient']}>
+                  <Layout>
+                    <MedicalRecords />
                   </Layout>
                 </ProtectedRoute>
               } />

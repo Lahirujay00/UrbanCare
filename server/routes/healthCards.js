@@ -110,14 +110,58 @@ router.get('/patient/:patientId', auth, async (req, res) => {
       });
     }
 
-    const healthCard = await HealthCard.findOne({ patient: patientId })
+    let healthCard = await HealthCard.findOne({ patient: patientId })
       .populate('patient', 'firstName lastName email phone dateOfBirth gender');
 
     if (!healthCard) {
-      return res.status(404).json({
-        success: false,
-        message: 'Health card not found'
+      // Auto-create health card for patient if it doesn't exist
+      const patient = await User.findById(patientId);
+      if (!patient || patient.role !== 'patient') {
+        return res.status(404).json({
+          success: false,
+          message: 'Patient not found'
+        });
+      }
+
+      // Generate card number
+      const cardNumber = await HealthCard.generateCardNumber();
+
+      // Create QR code data
+      const qrData = {
+        cardNumber,
+        patientId,
+        name: `${patient.firstName} ${patient.lastName}`,
+        emergencyContact: patient.phone || 'Not provided'
+      };
+
+      // Generate QR code
+      const qrCode = await QRCode.toDataURL(JSON.stringify(qrData));
+
+      // Create new health card
+      healthCard = new HealthCard({
+        patient: patientId,
+        cardNumber,
+        qrCode,
+        bloodGroup: 'Not specified',
+        emergencyContact: {
+          name: 'Emergency Contact',
+          phone: patient.phone || 'Not provided',
+          relationship: 'Not specified'
+        },
+        allergies: [],
+        chronicConditions: [],
+        insuranceInfo: {
+          provider: 'Not specified',
+          policyNumber: 'Not provided'
+        },
+        isActive: true,
+        createdBy: patientId // Auto-created
       });
+
+      await healthCard.save();
+      
+      // Populate the patient data
+      await healthCard.populate('patient', 'firstName lastName email phone dateOfBirth gender');
     }
 
     // Log access
@@ -304,6 +348,65 @@ router.get('/:id/access-log', auth, authorize('staff', 'admin'), async (req, res
 
   } catch (error) {
     console.error('Get access log error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Update health card information
+// @route   PUT /api/health-cards/patient/:patientId
+// @access  Private (Patient own card, Staff, Admin)
+router.put('/patient/:patientId', auth, async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    const { 
+      bloodGroup, 
+      emergencyContact, 
+      allergies, 
+      chronicConditions,
+      insuranceInfo 
+    } = req.body;
+
+    // Check authorization
+    if (req.user.role === 'patient' && req.user.id !== patientId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this health card'
+      });
+    }
+
+    const healthCard = await HealthCard.findOne({ patient: patientId });
+    if (!healthCard) {
+      return res.status(404).json({
+        success: false,
+        message: 'Health card not found'
+      });
+    }
+
+    // Update fields if provided
+    if (bloodGroup) healthCard.bloodGroup = bloodGroup;
+    if (emergencyContact) healthCard.emergencyContact = emergencyContact;
+    if (allergies) healthCard.allergies = allergies;
+    if (chronicConditions) healthCard.chronicConditions = chronicConditions;
+    if (insuranceInfo) healthCard.insuranceInfo = insuranceInfo;
+
+    healthCard.updatedAt = new Date();
+    await healthCard.save();
+
+    // Populate patient data
+    await healthCard.populate('patient', 'firstName lastName email phone dateOfBirth gender');
+
+    res.json({
+      success: true,
+      data: { healthCard },
+      message: 'Health card updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Update health card error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',

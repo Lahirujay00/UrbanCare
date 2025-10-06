@@ -35,12 +35,13 @@ const Navbar = () => {
     { name: 'About', href: '/about' },
     { name: 'Services', href: '/services' },
     { name: 'Contact', href: '/contact' },
+    { name: 'FAQ', href: '/faq' },
   ];
 
   const patientLinks = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Book Appointment', href: '/book-appointment' },
-    { name: 'Medical Records', href: '/medical-records' },
+    { name: 'Book Appointment', href: '/appointments/book' },
+    { name: 'Medical Records', href: '/records' },
     { name: 'Health Card', href: '/digital-health-card' },
   ];
 

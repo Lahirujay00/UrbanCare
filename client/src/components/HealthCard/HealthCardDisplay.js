@@ -18,6 +18,14 @@ const HealthCardDisplay = () => {
   const [healthCard, setHealthCard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({
+    bloodGroup: '',
+    emergencyContact: { name: '', phone: '', relationship: '' },
+    allergies: [],
+    chronicConditions: [],
+    insuranceInfo: { provider: '', policyNumber: '' }
+  });
 
   useEffect(() => {
     fetchHealthCard();
@@ -29,18 +37,61 @@ const HealthCardDisplay = () => {
       const response = await healthCardAPI.getPatientCard(user.id);
       
       if (response.data.success) {
-        setHealthCard(response.data.data.healthCard);
+        const card = response.data.data.healthCard;
+        setHealthCard(card);
+        // Initialize edit form with current data
+        setEditForm({
+          bloodGroup: card.bloodGroup || '',
+          emergencyContact: card.emergencyContact || { name: '', phone: '', relationship: '' },
+          allergies: card.allergies || [],
+          chronicConditions: card.chronicConditions || [],
+          insuranceInfo: card.insuranceInfo || { provider: '', policyNumber: '' }
+        });
       }
     } catch (error) {
       console.error('Error fetching health card:', error);
       if (error.response?.status === 404) {
-        // No health card exists
-        setHealthCard(null);
+        // No health card exists - will be auto-created by backend
+        toast.info('Creating your digital health card...');
+        // Retry after a short delay
+        setTimeout(() => fetchHealthCard(), 1000);
       } else {
         toast.error('Failed to load health card');
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateCard = async () => {
+    try {
+      const response = await healthCardAPI.updatePatientCard(user.id, editForm);
+      if (response.data.success) {
+        setHealthCard(response.data.data.healthCard);
+        setIsEditing(false);
+        toast.success('Health card updated successfully');
+      }
+    } catch (error) {
+      console.error('Error updating health card:', error);
+      toast.error('Failed to update health card');
+    }
+  };
+
+  const handleInputChange = (field, value) => {
+    if (field.includes('.')) {
+      const [parent, child] = field.split('.');
+      setEditForm(prev => ({
+        ...prev,
+        [parent]: {
+          ...prev[parent],
+          [child]: value
+        }
+      }));
+    } else {
+      setEditForm(prev => ({
+        ...prev,
+        [field]: value
+      }));
     }
   };
 

@@ -131,6 +131,7 @@ export const paymentAPI = {
 export const healthCardAPI = {
   createHealthCard: (cardData) => api.post('/health-cards', cardData),
   getPatientCard: (patientId) => api.get(`/health-cards/patient/${patientId}`),
+  updatePatientCard: (patientId, updateData) => api.put(`/health-cards/patient/${patientId}`, updateData),
   validateCard: (validationData) => api.post('/health-cards/validate', validationData),
   updateCard: (cardId, updateData) => api.put(`/health-cards/${cardId}`, updateData),
   getAccessLog: (cardId) => api.get(`/health-cards/${cardId}/access-log`),

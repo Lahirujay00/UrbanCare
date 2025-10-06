@@ -21,6 +21,7 @@ import { appointmentAPI, medicalRecordsAPI } from '../../services/api';
 import HealthCardDisplay from '../../components/HealthCard/HealthCardDisplay';
 import DocumentManager from '../../components/Documents/DocumentManager';
 import RefundManager from '../../components/Refunds/RefundManager';
+import ChatBot from '../../components/ChatBot/ChatBot';
 import toast from 'react-hot-toast';
 
 const PatientDashboardEnhanced = () => {
@@ -410,6 +411,9 @@ const PatientDashboardEnhanced = () => {
         {/* Refunds Tab */}
         {activeTab === 'refunds' && <RefundManager />}
       </div>
+
+      {/* ChatBot Component */}
+      <ChatBot />
     </div>
   );
 };
