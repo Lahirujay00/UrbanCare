@@ -202,7 +202,7 @@ const DoctorDashboard = () => {
                           <p className="text-sm text-gray-500 mt-1">
                             Chief Complaint: {appointment.chiefComplaint}
                           </p>
-                          <div className="mt-2">
+                          <div className="mt-2 flex items-center space-x-2">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                               appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                               appointment.status === 'in-progress' ? 'bg-blue-100 text-blue-800' :
@@ -211,6 +211,20 @@ const DoctorDashboard = () => {
                             }`}>
                               {appointment.status}
                             </span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              appointment.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                              appointment.paymentStatus === 'pay-at-hospital' ? 'bg-orange-100 text-orange-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {appointment.paymentStatus === 'paid' ? '💰 Paid' : 
+                               appointment.paymentStatus === 'pay-at-hospital' ? '🏥 Pay at Hospital' : 
+                               '⏳ Payment Pending'}
+                            </span>
+                            {appointment.consultationFee && (
+                              <span className="text-xs text-gray-600">
+                                ${appointment.consultationFee}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>

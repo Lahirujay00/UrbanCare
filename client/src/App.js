@@ -19,7 +19,7 @@ import ResetPassword from './pages/auth/ResetPassword';
 import VerifyEmail from './pages/auth/VerifyEmail';
 
 // Patient Pages
-import PatientDashboard from './pages/patient/Dashboard';
+import PatientDashboard from './pages/patient/DashboardConnected';
 import AppointmentBooking from './pages/patient/AppointmentBooking';
 import MedicalRecords from './pages/patient/MedicalRecords';
 import DigitalHealthCard from './pages/patient/DigitalHealthCard';
@@ -27,22 +27,22 @@ import Profile from './pages/patient/Profile';
 import ProfileEditor from './pages/patient/ProfileEditor';
 
 // Doctor Pages
-import DoctorDashboard from './pages/doctor/Dashboard';
+import DoctorDashboard from './pages/doctor/DashboardFull';
 import PatientRecords from './pages/doctor/PatientRecords';
 import Appointments from './pages/doctor/Appointments';
 import AvailabilityManagement from './pages/doctor/AvailabilityManagement';
 import DoctorProfileEditor from './pages/doctor/ProfileEditor';
 
 // Staff Pages
-import StaffDashboard from './pages/staff/Dashboard';
+import StaffDashboard from './pages/staff/DashboardFull';
 import PatientVerification from './pages/staff/PatientVerification';
 // Manager Pages
-import ManagerDashboard from './pages/manager/Dashboard';
+import ManagerDashboard from './pages/manager/DashboardFull';
 import Reports from './pages/manager/Reports';
 import UserManagement from './pages/manager/UserManagement';
 
 // Admin Pages
-import AdminDashboard from './pages/admin/Dashboard';
+import AdminDashboard from './pages/admin/DashboardFull';
 import SystemSettings from './pages/admin/SystemSettings';
 
 // Create a client

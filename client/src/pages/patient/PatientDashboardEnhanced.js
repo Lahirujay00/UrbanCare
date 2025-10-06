@@ -1,0 +1,417 @@
+import React, { useState, useEffect } from 'react';
+import {
+  CalendarIcon,
+  DocumentTextIcon,
+  HeartIcon,
+  BellIcon,
+  ClockIcon,
+  UserIcon,
+  ChartBarIcon,
+  PlusIcon,
+  EyeIcon,
+  ArrowRightIcon,
+  ExclamationCircleIcon,
+  QrCodeIcon,
+  CloudArrowUpIcon,
+  CurrencyDollarIcon
+} from '@heroicons/react/24/outline';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
+import { appointmentAPI, medicalRecordsAPI } from '../../services/api';
+import HealthCardDisplay from '../../components/HealthCard/HealthCardDisplay';
+import DocumentManager from '../../components/Documents/DocumentManager';
+import RefundManager from '../../components/Refunds/RefundManager';
+import toast from 'react-hot-toast';
+
+const PatientDashboardEnhanced = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  // State management
+  const [loading, setLoading] = useState(true);
+  const [appointments, setAppointments] = useState([]);
+  const [medicalRecords, setMedicalRecords] = useState([]);
+  const [stats, setStats] = useState({
+    upcomingAppointments: 0,
+    totalRecords: 0,
+    recentRecords: 0,
+    notifications: 0
+  });
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Tab configuration
+  const tabs = [
+    { id: 'overview', name: 'Overview', icon: ChartBarIcon },
+    { id: 'health-card', name: 'Health Card', icon: QrCodeIcon },
+    { id: 'documents', name: 'Documents', icon: DocumentTextIcon },
+    { id: 'refunds', name: 'Refunds', icon: CurrencyDollarIcon }
+  ];
+
+  // Fetch dashboard data
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch appointments
+      const appointmentsRes = await appointmentAPI.getAppointments({
+        status: 'scheduled,confirmed'
+      });
+      
+      if (appointmentsRes.data.success) {
+        const upcomingAppts = appointmentsRes.data.data.appointments || [];
+        setAppointments(upcomingAppts);
+        
+        // Update stats
+        setStats(prev => ({
+          ...prev,
+          upcomingAppointments: upcomingAppts.length
+        }));
+      }
+
+      // Fetch medical records
+      const recordsRes = await medicalRecordsAPI.getRecords();
+      
+      if (recordsRes.data.success) {
+        const records = recordsRes.data.data.records || [];
+        setMedicalRecords(records);
+        
+        // Count recent records (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentCount = records.filter(r => 
+          new Date(r.createdAt) > thirtyDaysAgo
+        ).length;
+        
+        setStats(prev => ({
+          ...prev,
+          totalRecords: records.length,
+          recentRecords: recentCount
+        }));
+      }
+      
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+      toast.error('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric', 
+      year: 'numeric' 
+    });
+  };
+
+  // Handle appointment cancellation
+  const handleCancelAppointment = async (appointmentId) => {
+    if (!window.confirm('Are you sure you want to cancel this appointment?')) {
+      return;
+    }
+
+    try {
+      await appointmentAPI.cancelAppointment(appointmentId, 'Patient requested cancellation');
+      toast.success('Appointment cancelled successfully');
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      toast.error('Failed to cancel appointment');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">
+                Welcome back, {user?.firstName}! 👋
+              </h1>
+              <p className="text-gray-600">
+                Your complete healthcare dashboard with all advanced features
+              </p>
+            </div>
+            <button
+              onClick={() => navigate('/appointments/book')}
+              className="hidden sm:flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
+            >
+              <PlusIcon className="w-5 h-5" />
+              <span>Book Appointment</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {tabs.map((tab) => {
+                const IconComponent = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    <span>{tab.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
+              <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">{stats.upcomingAppointments}</p>
+                    <p className="text-gray-600 text-sm font-medium">Upcoming Appointments</p>
+                    <p className="text-xs text-blue-600 mt-1">Next 30 days</p>
+                  </div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <CalendarIcon className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">{stats.totalRecords}</p>
+                    <p className="text-gray-600 text-sm font-medium">Medical Records</p>
+                    <p className="text-xs text-green-600 mt-1">{stats.recentRecords} recent</p>
+                  </div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <DocumentTextIcon className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">Active</p>
+                    <p className="text-gray-600 text-sm font-medium">Health Card Status</p>
+                    <p className="text-xs text-purple-600 mt-1">Digital ID ready</p>
+                  </div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <QrCodeIcon className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">0</p>
+                    <p className="text-gray-600 text-sm font-medium">Pending Refunds</p>
+                    <p className="text-xs text-orange-600 mt-1">All processed</p>
+                  </div>
+                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                    <CurrencyDollarIcon className="w-8 h-8 text-white" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Upcoming Appointments */}
+            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 mb-8">
+              <div className="p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <CalendarIcon className="w-6 h-6 text-white" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">
+                      Upcoming Appointments
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => navigate('/appointments/book')}
+                    className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    <span>Book New</span>
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                {appointments.length > 0 ? (
+                  <div className="space-y-4">
+                    {appointments.slice(0, 3).map((appointment) => (
+                      <div
+                        key={appointment._id}
+                        className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-6 rounded-2xl hover:shadow-lg transition-all duration-300"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                              <UserIcon className="w-8 h-8 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                                {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                              </h3>
+                              <p className="text-sm text-blue-700 font-medium mb-1">
+                                {appointment.doctor?.specialization} • {appointment.appointmentType}
+                              </p>
+                              <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                  <CalendarIcon className="w-4 h-4 text-gray-500" />
+                                  <span className="text-sm text-gray-600">{formatDate(appointment.appointmentDate)}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <ClockIcon className="w-4 h-4 text-gray-500" />
+                                  <span className="text-sm text-gray-600">{appointment.appointmentTime}</span>
+                                </div>
+                              </div>
+                              <div className="mt-2 flex items-center space-x-2">
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                  appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {appointment.status}
+                                </span>
+                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                  appointment.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                  appointment.paymentStatus === 'pay-at-hospital' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {appointment.paymentStatus === 'paid' ? '💰 Paid' : 
+                                   appointment.paymentStatus === 'pay-at-hospital' ? '🏥 Pay at Hospital' : 
+                                   '⏳ Payment Pending'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col space-y-2">
+                            <button 
+                              onClick={() => navigate(`/appointments/${appointment._id}`)}
+                              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-md"
+                            >
+                              View Details
+                            </button>
+                            <button 
+                              onClick={() => handleCancelAppointment(appointment._id)}
+                              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No upcoming appointments</h3>
+                    <p className="text-gray-500 mb-6">Schedule your next appointment to stay on top of your health</p>
+                    <button
+                      onClick={() => navigate('/appointments/book')}
+                      className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <PlusIcon className="w-5 h-5" />
+                      <span>Book Your First Appointment</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <button
+                onClick={() => setActiveTab('health-card')}
+                className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-left"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                    <QrCodeIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">Digital Health Card</h3>
+                    <p className="text-sm text-gray-600">View your QR code and medical info</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('documents')}
+                className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-left"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                    <CloudArrowUpIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">Manage Documents</h3>
+                    <p className="text-sm text-gray-600">Upload and organize medical files</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('refunds')}
+                className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-left"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
+                    <CurrencyDollarIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900">Request Refunds</h3>
+                    <p className="text-sm text-gray-600">Manage appointment refunds</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Health Card Tab */}
+        {activeTab === 'health-card' && <HealthCardDisplay />}
+
+        {/* Documents Tab */}
+        {activeTab === 'documents' && <DocumentManager />}
+
+        {/* Refunds Tab */}
+        {activeTab === 'refunds' && <RefundManager />}
+      </div>
+    </div>
+  );
+};
+
+export default PatientDashboardEnhanced;

@@ -19,6 +19,10 @@ const appointmentRoutes = require('./routes/appointments');
 const medicalRecordRoutes = require('./routes/medicalRecords');
 const reportRoutes = require('./routes/reports');
 const paymentRoutes = require('./routes/payments');
+const healthCardRoutes = require('./routes/healthCards');
+const documentRoutes = require('./routes/documents');
+const refundRoutes = require('./routes/refunds');
+const chatbotRoutes = require('./routes/chatbot');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -142,7 +146,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Handle common static file requests to reduce noise in logs
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.get('/logo192.png', (req, res) => res.status(204).end());
 app.get('/manifest.json', (req, res) => res.status(204).end());
@@ -155,12 +158,17 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/medical-records', medicalRecordRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/health-cards', healthCardRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/refunds', refundRoutes);
+app.use('/api/chatbot', chatbotRoutes);
+
+// Serve uploaded files
+app.use('/uploads', express.static('uploads'));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log(`👤 User connected: ${socket.id}`);
-
-  // Join user to their own room for private notifications
   socket.on('join', (userId) => {
     socket.join(userId);
     console.log(`👤 User ${userId} joined their room`);

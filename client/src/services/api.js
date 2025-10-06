@@ -113,21 +113,55 @@ export const medicalRecordsAPI = {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   downloadDocument: (recordId, documentId) => api.get(`/medical-records/${recordId}/document/${documentId}`, {
-    responseType: 'blob'
   }),
 };
 
 // Payment API endpoints
 export const paymentAPI = {
-  createPaymentIntent: (appointmentId) => api.post('/payments/create-intent', { appointmentId }),
-  confirmPayment: (paymentIntentId) => api.post('/payments/confirm', { paymentIntentId }),
-  getPaymentHistory: () => api.get('/payments/history'),
-  processRefund: (paymentId, amount) => api.post('/payments/refund', { paymentId, amount }),
+  processPayment: (paymentData) => api.post('/payments/process', paymentData),
+  getPaymentHistory: (patientId) => api.get(`/payments/history/${patientId}`),
+  getPaymentById: (paymentId) => api.get(`/payments/${paymentId}`),
+  refundPayment: (paymentId, refundData) => api.post(`/payments/${paymentId}/refund`, refundData),
   getInvoice: (paymentId) => api.get(`/payments/invoice/${paymentId}`, { responseType: 'blob' }),
 };
 
-// Reports API endpoints (Manager/Admin only)
-export const reportsAPI = {
+// Health Card API endpoints
+export const healthCardAPI = {
+  createHealthCard: (cardData) => api.post('/health-cards', cardData),
+  getPatientCard: (patientId) => api.get(`/health-cards/patient/${patientId}`),
+  validateCard: (validationData) => api.post('/health-cards/validate', validationData),
+  updateCard: (cardId, updateData) => api.put(`/health-cards/${cardId}`, updateData),
+  getAccessLog: (cardId) => api.get(`/health-cards/${cardId}/access-log`),
+  getAllCards: (params) => api.get('/health-cards', { params }),
+};
+// Document API endpoints
+export const documentAPI = {
+  uploadDocument: (formData) => api.post('/documents/upload', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  getPatientDocuments: (patientId, params) => api.get(`/documents/patient/${patientId}`, { params }),
+  getDocument: (documentId) => api.get(`/documents/${documentId}`),
+  downloadDocument: (documentId) => api.get(`/documents/${documentId}/download`, {
+    responseType: 'blob'
+  }),
+  shareDocument: (documentId, shareData) => api.post(`/documents/${documentId}/share`, shareData),
+  deleteDocument: (documentId) => api.delete(`/documents/${documentId}`),
+  getDocumentTypes: () => api.get('/documents/meta/types'),
+};
+
+// Refund API endpoints
+export const refundAPI = {
+  requestRefund: (refundData) => api.post('/refunds/request', refundData),
+  getRefunds: (params) => api.get('/refunds', { params }),
+  getRefund: (refundId) => api.get(`/refunds/${refundId}`),
+  reviewRefund: (refundId, reviewData) => api.put(`/refunds/${refundId}/review`, reviewData),
+  processRefund: (refundId, processData) => api.put(`/refunds/${refundId}/process`, processData),
+  cancelRefund: (refundId, cancelData) => api.put(`/refunds/${refundId}/cancel`, cancelData),
+  getRefundStats: (params) => api.get('/refunds/stats/summary', { params }),
+};
+
+// Report API endpoints
+export const reportAPI = {
   getDashboardStats: () => api.get('/reports/dashboard'),
   getAppointmentReports: (params) => api.get('/reports/appointments', { params }),
   getRevenueReports: (params) => api.get('/reports/revenue', { params }),
@@ -139,6 +173,9 @@ export const reportsAPI = {
   }),
 };
 
+// Alias for backward compatibility
+export const reportsAPI = reportAPI;
+
 // Notification API endpoints
 export const notificationAPI = {
   getNotifications: () => api.get('/notifications'),
@@ -146,6 +183,15 @@ export const notificationAPI = {
   markAllAsRead: () => api.patch('/notifications/read-all'),
   deleteNotification: (id) => api.delete(`/notifications/${id}`),
   updatePreferences: (preferences) => api.put('/notifications/preferences', preferences),
+};
+
+// Chatbot API endpoints // NEW
+export const chatbotAPI = {
+  sendMessage: (messageData) => api.post('/chatbot/message', messageData),
+  getChatHistory: () => api.get('/chatbot/history'),
+  getHealthTips: (category) => api.get(`/chatbot/health-tips/${category}`),
+  getSymptomInfo: (symptom) => api.get(`/chatbot/symptom/${symptom}`),
+  checkEmergency: (messageData) => api.post('/chatbot/emergency-check', messageData),
 };
 
 // Utility function to handle API errors

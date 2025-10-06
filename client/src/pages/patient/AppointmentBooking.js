@@ -557,33 +557,60 @@ const AppointmentBooking = () => {
             {/* Chief Complaint */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for Visit *
+                Reason for Visit * <span className="text-red-600">(Required - Min 10 chars)</span>
               </label>
-              <p className="text-xs text-gray-600 mb-2 bg-gray-50 p-2 rounded border border-gray-200">
-                📝 Please provide a detailed description (minimum 10 characters, maximum 500 characters)
-              </p>
+              <div className={`mb-2 p-3 rounded-lg border ${
+                chiefComplaint.trim().length > 0 && chiefComplaint.trim().length < 10
+                  ? 'bg-red-50 border-red-300'
+                  : chiefComplaint.trim().length >= 10
+                  ? 'bg-green-50 border-green-300'
+                  : 'bg-blue-50 border-blue-200'
+              }`}>
+                <p className={`text-sm font-medium ${
+                  chiefComplaint.trim().length > 0 && chiefComplaint.trim().length < 10
+                    ? 'text-red-700'
+                    : chiefComplaint.trim().length >= 10
+                    ? 'text-green-700'
+                    : 'text-blue-700'
+                }`}>
+                  {chiefComplaint.trim().length > 0 && chiefComplaint.trim().length < 10
+                    ? '❌ Description too short - please add more details'
+                    : chiefComplaint.trim().length >= 10
+                    ? '✅ Good! Your description meets the requirement'
+                    : '📝 Please provide a detailed description (minimum 10 characters, maximum 500 characters)'
+                  }
+                </p>
+              </div>
               <textarea
                 value={chiefComplaint}
                 onChange={(e) => setChiefComplaint(e.target.value)}
-                placeholder="Please describe your symptoms or reason for visit in detail (e.g., experiencing headaches for 3 days, fever and cough, routine checkup needed)..."
-                rows={4}
+                placeholder="Example: I've been experiencing severe headaches for the past 3 days, accompanied by nausea and sensitivity to light..."
+                rows={5}
                 maxLength={500}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className={`w-full px-4 py-3 border-2 rounded-lg focus:ring-2 focus:ring-blue-500 transition-colors ${
+                  chiefComplaint.trim().length > 0 && chiefComplaint.trim().length < 10
+                    ? 'border-red-400 bg-red-50'
+                    : chiefComplaint.trim().length >= 10
+                    ? 'border-green-400 bg-green-50'
+                    : 'border-gray-300'
+                }`}
               />
-              <div className="mt-1 flex justify-between items-center">
-                <p className={`text-sm ${
-                  chiefComplaint.trim().length < 10 
-                    ? 'text-red-600 font-medium' 
-                    : chiefComplaint.trim().length > 450 
-                    ? 'text-orange-600' 
-                    : 'text-gray-500'
-                }`}>
-                  {chiefComplaint.trim().length < 10 
-                    ? `⚠️ Minimum 10 characters required (${chiefComplaint.trim().length}/10)` 
-                    : `✓ ${chiefComplaint.trim().length} characters`
-                  }
-                </p>
-                <p className="text-sm text-gray-400">{chiefComplaint.length}/500</p>
+              <div className="mt-2 flex justify-between items-center">
+                <div className="flex items-center space-x-2">
+                  <div className={`text-sm font-semibold ${
+                    chiefComplaint.trim().length < 10 
+                      ? 'text-red-600' 
+                      : chiefComplaint.trim().length > 450 
+                      ? 'text-orange-600' 
+                      : 'text-green-600'
+                  }`}>
+                    {chiefComplaint.trim().length < 10 
+                      ? `⚠️ Need ${10 - chiefComplaint.trim().length} more characters` 
+                      : `✓ Valid (${chiefComplaint.trim().length} characters)`
+                    }
+                  </div>
+                </div>
+                <p className="text-sm font-medium text-gray-600">{chiefComplaint.length}/500</p>
               </div>
             </div>
 

@@ -5,10 +5,15 @@ import {
   Cog6ToothIcon,
   ChartBarIcon,
   UserPlusIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  DocumentChartBarIcon,
+  CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
-import { userAPI, reportsAPI } from '../../services/api';
+import { userAPI, reportAPI } from '../../services/api';
+import ReportsDashboard from '../../components/Reports/ReportsDashboard';
+import RefundManager from '../../components/Refunds/RefundManager';
+import ChatBot from '../../components/ChatBot/ChatBot';
 import toast from 'react-hot-toast';
 
 const AdminDashboard = () => {
@@ -25,6 +30,7 @@ const AdminDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [selectedRole, setSelectedRole] = useState('all');
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     fetchAdminData();
@@ -39,7 +45,7 @@ const AdminDashboard = () => {
       setLoading(true);
       
       // Fetch dashboard stats
-      const dashboardRes = await reportsAPI.getDashboardStats();
+      const dashboardRes = await reportAPI.getAppointmentReports();
       if (dashboardRes.data.success) {
         setStats(prev => ({
           ...prev,
@@ -146,8 +152,41 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        {/* Tab Navigation */}
+        <div className="mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              {[
+                { id: 'overview', name: 'Overview', icon: ChartBarIcon },
+                { id: 'users', name: 'User Management', icon: UsersIcon },
+                { id: 'reports', name: 'Reports & Analytics', icon: DocumentChartBarIcon },
+                { id: 'refunds', name: 'Refund Management', icon: CurrencyDollarIcon }
+              ].map((tab) => {
+                const IconComponent = tab.icon;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center space-x-2 py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <IconComponent className="w-5 h-5" />
+                    <span>{tab.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'overview' && (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -360,8 +399,173 @@ const AdminDashboard = () => {
               </button>
             </div>
           </div>
-        </div>
+            </div>
+          </>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
+                    <p className="text-sm text-gray-600">Total Users</p>
+                  </div>
+                  <UsersIcon className="w-10 h-10 text-blue-500" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{stats.patients}</p>
+                    <p className="text-sm text-gray-600">Patients</p>
+                  </div>
+                  <UsersIcon className="w-10 h-10 text-green-500" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{stats.doctors}</p>
+                    <p className="text-sm text-gray-600">Doctors</p>
+                  </div>
+                  <ShieldCheckIcon className="w-10 h-10 text-purple-500" />
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-bold text-gray-900">{stats.staff}</p>
+                    <p className="text-sm text-gray-600">Staff Members</p>
+                  </div>
+                  <Cog6ToothIcon className="w-10 h-10 text-yellow-500" />
+                </div>
+              </div>
+            </div>
+
+            {/* User Management Section */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold text-gray-900">User Management</h2>
+                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    <UserPlusIcon className="w-5 h-5 inline mr-2" />
+                    Add User
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6">
+                {/* Search and Filter */}
+                <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                  <div className="flex-1 relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search users..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  
+                  <select
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Roles</option>
+                    <option value="patient">Patients</option>
+                    <option value="doctor">Doctors</option>
+                    <option value="staff">Staff</option>
+                    <option value="manager">Managers</option>
+                    <option value="admin">Admins</option>
+                  </select>
+                </div>
+
+                {/* Users Table */}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredUsers.slice(0, 10).map((user) => (
+                        <tr key={user._id} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="flex-shrink-0 h-10 w-10">
+                                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                  <span className="text-sm font-medium text-gray-700">
+                                    {user.firstName?.[0]}{user.lastName?.[0]}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {user.firstName} {user.lastName}
+                                </div>
+                                <div className="text-sm text-gray-500">{user.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(user.role)}`}>
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                              user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                            }`}>
+                              {user.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {formatDate(user.createdAt)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <button
+                              onClick={() => handleToggleUserStatus(user._id, user.isActive)}
+                              className="text-blue-600 hover:text-blue-900 mr-4"
+                            >
+                              {user.isActive ? 'Deactivate' : 'Activate'}
+                            </button>
+                            <button className="text-gray-600 hover:text-gray-900">
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Reports Tab */}
+        {activeTab === 'reports' && <ReportsDashboard />}
+
+        {/* Refunds Tab */}
+        {activeTab === 'refunds' && <RefundManager />}
       </div>
+
+      {/* ChatBot Component */}
+      <ChatBot />
     </div>
   );
 };
