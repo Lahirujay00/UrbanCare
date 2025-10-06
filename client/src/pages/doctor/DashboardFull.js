@@ -7,9 +7,7 @@ import {
   XCircleIcon,
   DocumentTextIcon,
   PlusIcon,
-  EyeIcon,
-  Cog6ToothIcon,
-  CalendarDaysIcon
+  EyeIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -131,45 +129,6 @@ const DoctorDashboard = () => {
           <p className="text-gray-600 mt-2">
             {user?.specialization} • {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <button
-            onClick={() => navigate('/doctor/availability')}
-            className="group bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-          >
-            <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                <CalendarDaysIcon className="w-8 h-8" />
-              </div>
-              <div className="text-left flex-1">
-                <h3 className="text-xl font-bold">Manage Availability</h3>
-                <p className="text-blue-100 text-sm mt-1">Set your available dates and time slots</p>
-              </div>
-              <svg className="w-6 h-6 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </button>
-
-          <button
-            onClick={() => navigate('/doctor/profile/edit')}
-            className="group bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-          >
-            <div className="flex items-center space-x-4">
-              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center">
-                <Cog6ToothIcon className="w-8 h-8" />
-              </div>
-              <div className="text-left flex-1">
-                <h3 className="text-xl font-bold">Edit Profile</h3>
-                <p className="text-purple-100 text-sm mt-1">Update your professional information</p>
-              </div>
-              <svg className="w-6 h-6 group-hover:translate-x-2 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </button>
         </div>
 
         {/* Stats Cards */}

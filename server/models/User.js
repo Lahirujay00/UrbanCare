@@ -153,12 +153,40 @@ const userSchema = new mongoose.Schema({
     sunday: { start: String, end: String, available: Boolean }
   },
   
-  // Profile
-  avatar: {
-    type: String,
-    default: ''
+  // Doctor Availability (Date-specific 15-minute slots)
+  availability: {
+    type: Map,
+    of: [String],
+    default: new Map()
   },
-  bio: String,
+  
+  // Additional doctor profile fields
+  qualifications: [String],
+  languages: [String],
+  experience: String,
+  workingDays: [String],
+  workingHours: {
+    start: String,
+    end: String
+  },
+  
+  // Patient medical information fields
+  medicalInfo: {
+    bloodType: String,
+    allergies: [String],
+    chronicConditions: [String],
+    currentMedications: [String],
+    emergencyContact: {
+      name: String,
+      relationship: String,
+      phoneNumber: String
+    },
+    insuranceProvider: String,
+    insurancePolicyNumber: String,
+    height: Number,
+    weight: Number
+  },
+  phoneNumber: String,
   
   // Security
   passwordResetToken: String,

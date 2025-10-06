@@ -24,16 +24,18 @@ import AppointmentBooking from './pages/patient/AppointmentBooking';
 import MedicalRecords from './pages/patient/MedicalRecords';
 import DigitalHealthCard from './pages/patient/DigitalHealthCard';
 import Profile from './pages/patient/Profile';
+import ProfileEditor from './pages/patient/ProfileEditor';
 
 // Doctor Pages
 import DoctorDashboard from './pages/doctor/Dashboard';
 import PatientRecords from './pages/doctor/PatientRecords';
 import Appointments from './pages/doctor/Appointments';
+import AvailabilityManagement from './pages/doctor/AvailabilityManagement';
+import DoctorProfileEditor from './pages/doctor/ProfileEditor';
 
 // Staff Pages
 import StaffDashboard from './pages/staff/Dashboard';
 import PatientVerification from './pages/staff/PatientVerification';
-
 // Manager Pages
 import ManagerDashboard from './pages/manager/Dashboard';
 import Reports from './pages/manager/Reports';
@@ -189,6 +191,14 @@ function App() {
                   </Layout>
                 </ProtectedRoute>
               } />
+              
+              <Route path="/profile/edit" element={
+                <ProtectedRoute allowedRoles={['patient']}>
+                  <Layout>
+                    <ProfileEditor />
+                  </Layout>
+                </ProtectedRoute>
+              } />
 
               {/* Doctor Routes */}
               <Route path="/doctor/dashboard" element={
@@ -211,6 +221,22 @@ function App() {
                 <ProtectedRoute allowedRoles={['doctor']}>
                   <Layout>
                     <PatientRecords />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/doctor/availability" element={
+                <ProtectedRoute allowedRoles={['doctor']}>
+                  <Layout>
+                    <AvailabilityManagement />
+                  </Layout>
+                </ProtectedRoute>
+              } />
+              
+              <Route path="/doctor/profile/edit" element={
+                <ProtectedRoute allowedRoles={['doctor']}>
+                  <Layout>
+                    <DoctorProfileEditor />
                   </Layout>
                 </ProtectedRoute>
               } />

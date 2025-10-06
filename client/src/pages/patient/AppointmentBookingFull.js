@@ -35,8 +35,6 @@ const AppointmentBooking = () => {
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
-  const [createdAppointment, setCreatedAppointment] = useState(null);
-  const [paymentMethod, setPaymentMethod] = useState('card');
 
   // Fetch doctors on component mount
   useEffect(() => {
@@ -96,41 +94,35 @@ const AppointmentBooking = () => {
   const fetchAvailableSlots = async () => {
     try {
       setLoadingSlots(true);
+      const response = await appointmentAPI.checkAvailability(
+        selectedDoctor._id,
+        selectedDate
+      );
       
-      // Get doctor's availability for the selected date
-      if (selectedDoctor.availability && selectedDoctor.availability[selectedDate]) {
-        const doctorSlots = selectedDoctor.availability[selectedDate] || [];
-        
-        // If API is available, check which slots are already booked
-        try {
-          const response = await appointmentAPI.checkAvailability(
-            selectedDoctor._id,
-            selectedDate
-          );
-          
-          if (response.data.success) {
-            const bookedSlots = response.data.data.bookedSlots || [];
-            const availableSlots = doctorSlots.filter(slot => !bookedSlots.includes(slot));
-            setAvailableSlots(availableSlots);
-          } else {
-            setAvailableSlots(doctorSlots);
-          }
-        } catch (apiError) {
-          // If API fails, show all doctor's slots
-          console.log('API check failed, showing all doctor slots');
-          setAvailableSlots(doctorSlots);
-        }
-      } else {
-        // No availability set for this date
-        setAvailableSlots([]);
-        toast.info('Doctor has no availability set for this date');
+      if (response.data.success) {
+        setAvailableSlots(response.data.data.availableSlots || []);
       }
     } catch (error) {
       console.error('Error fetching slots:', error);
-      setAvailableSlots([]);
+      // Generate default slots if API fails
+      generateDefaultSlots();
     } finally {
       setLoadingSlots(false);
     }
+  };
+
+  const generateDefaultSlots = () => {
+    // Generate time slots from 9 AM to 5 PM
+    const slots = [];
+    for (let hour = 9; hour <= 17; hour++) {
+      if (hour !== 12 && hour !== 13) { // Skip lunch hours
+        slots.push(`${hour > 12 ? hour - 12 : hour}:00 ${hour >= 12 ? 'PM' : 'AM'}`);
+        if (hour !== 17) {
+          slots.push(`${hour > 12 ? hour - 12 : hour}:30 ${hour >= 12 ? 'PM' : 'AM'}`);
+        }
+      }
+    }
+    setAvailableSlots(slots);
   };
 
   const handleDoctorSelect = (doctor) => {
@@ -165,124 +157,35 @@ const AppointmentBooking = () => {
       toast.error('Please describe your reason for visit');
       return;
     }
-    // Validate chief complaint length
-    if (chiefComplaint.trim().length < 10) {
-      toast.error('Please provide at least 10 characters for your reason (currently: ' + chiefComplaint.trim().length + ')');
-      return;
-    }
-    if (chiefComplaint.trim().length > 500) {
-      toast.error('Reason for visit is too long. Maximum 500 characters allowed.');
-      return;
-    }
     setSelectedStep(3);
-  };
-
-  const handleContinueToPayment = () => {
-    setSelectedStep(4);
   };
 
   const handleBookAppointment = async () => {
     try {
       setLoading(true);
       
-      // Final validation check before submitting
-      if (chiefComplaint.trim().length < 10) {
-        toast.error('Reason for visit must be at least 10 characters. Please provide more details.');
-        setLoading(false);
-        return;
-      }
-      
-      if (chiefComplaint.trim().length > 500) {
-        toast.error('Reason for visit is too long. Maximum 500 characters allowed.');
-        setLoading(false);
-        return;
-      }
-      
       const appointmentData = {
-        doctor: selectedDoctor._id,
+        doctorId: selectedDoctor._id,
         appointmentDate: selectedDate,
         appointmentTime: selectedTime,
-        duration: 15, // 15-minute slots
         appointmentType,
-        chiefComplaint: chiefComplaint.trim()
+        chiefComplaint,
+        consultationFee: selectedDoctor.consultationFee || 100
       };
-
-      console.log('Sending appointment data:', appointmentData);
-      console.log('Stringified data:', JSON.stringify(appointmentData, null, 2));
 
       const response = await appointmentAPI.createAppointment(appointmentData);
       
       if (response.data.success) {
-        setCreatedAppointment(response.data.data.appointment);
-        toast.success('Appointment created! Please proceed to payment.');
-        handleContinueToPayment();
+        toast.success('Appointment booked successfully!');
+        
+        // Navigate to payment or dashboard
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 2000);
       }
     } catch (error) {
       console.error('Error booking appointment:', error);
-      console.error('Error details:', error.response?.data);
-      console.error('Error message:', error.response?.data?.message);
-      console.error('Error errors:', JSON.stringify(error.response?.data?.errors, null, 2));
-      
-      // Show validation errors if available
-      if (error.response?.data?.errors) {
-        const errorMessages = error.response.data.errors.map(err => `${err.param}: ${err.msg}`).join(' | ');
-        toast.error(`Validation error: ${errorMessages}`);
-      } else {
-        toast.error(error.response?.data?.message || 'Failed to create appointment');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleProcessPayment = async () => {
-    try {
-      setLoading(true);
-      
-      const paymentData = {
-        paymentMethod,
-        transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      };
-
-      const response = await appointmentAPI.confirmPayment(createdAppointment._id, paymentData);
-      
-      if (response.data.success) {
-        toast.success('Payment successful! Appointment confirmed!');
-        
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Error processing payment:', error);
-      console.error('Payment error response:', error.response?.data);
-      
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          'Payment failed';
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePayLater = async () => {
-    try {
-      setLoading(true);
-      
-      // Schedule appointment without payment - payment will be done at hospital
-      const response = await appointmentAPI.scheduleWithoutPayment(createdAppointment._id);
-      
-      if (response.data.success) {
-        toast.success('Appointment scheduled! Pay when you arrive at the hospital.');
-        
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 2000);
-      }
-    } catch (error) {
-      console.error('Error scheduling appointment:', error);
-      toast.error(error.response?.data?.message || 'Failed to schedule appointment');
+      toast.error(error.response?.data?.message || 'Failed to book appointment');
     } finally {
       setLoading(false);
     }
@@ -322,12 +225,11 @@ const AppointmentBooking = () => {
 
         {/* Progress Steps */}
         <div className="mb-8">
-          <div className="flex items-center justify-center space-x-4">
+          <div className="flex items-center justify-center space-x-8">
             {[
               { step: 1, title: 'Choose Doctor', icon: UserIcon },
               { step: 2, title: 'Select Date & Time', icon: CalendarIcon },
-              { step: 3, title: 'Confirm Details', icon: CheckCircleIcon },
-              { step: 4, title: 'Payment', icon: CurrencyDollarIcon }
+              { step: 3, title: 'Confirm Details', icon: CheckCircleIcon }
             ].map(({ step, title, icon: Icon }) => (
               <div key={step} className="flex items-center">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
@@ -483,51 +385,32 @@ const AppointmentBooking = () => {
             {/* Time Slots */}
             {selectedDate && (
               <div className="mb-6">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Select Time Slot
-                  </label>
-                  {availableSlots.length > 0 && (
-                    <span className="text-xs text-blue-600 font-medium">
-                      {availableSlots.length} slots available (15 min each)
-                    </span>
-                  )}
-                </div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Select Time Slot
+                </label>
                 {loadingSlots ? (
                   <div className="text-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
                     <p className="text-gray-600 mt-2 text-sm">Loading available slots...</p>
                   </div>
                 ) : availableSlots.length > 0 ? (
-                  <>
-                    <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-xs text-blue-700">
-                        <ClockIcon className="w-4 h-4 inline mr-1" />
-                        Each appointment slot is <strong>15 minutes</strong>. Select your preferred time.
-                      </p>
-                    </div>
-                    <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-96 overflow-y-auto p-2">
-                      {availableSlots.map((slot) => (
-                        <button
-                          key={slot}
-                          onClick={() => handleTimeSelect(slot)}
-                          className={`py-2 px-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
-                            selectedTime === slot
-                              ? 'border-blue-600 bg-blue-600 text-white shadow-lg transform scale-105'
-                              : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700'
-                          }`}
-                        >
-                          {slot}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                    <ClockIcon className="w-12 h-12 text-gray-300 mx-auto mb-2" />
-                    <p className="text-gray-500">No available slots for this date</p>
-                    <p className="text-sm text-gray-400 mt-1">Please select a different date</p>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+                    {availableSlots.map((slot) => (
+                      <button
+                        key={slot}
+                        onClick={() => handleTimeSelect(slot)}
+                        className={`py-3 px-4 rounded-lg border-2 transition-all duration-200 ${
+                          selectedTime === slot
+                            ? 'border-blue-600 bg-blue-50 text-blue-600 font-semibold'
+                            : 'border-gray-200 hover:border-blue-300 text-gray-700'
+                        }`}
+                      >
+                        {slot}
+                      </button>
+                    ))}
                   </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No available slots for this date</p>
                 )}
               </div>
             )}
@@ -559,38 +442,19 @@ const AppointmentBooking = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Reason for Visit *
               </label>
-              <p className="text-xs text-gray-600 mb-2 bg-gray-50 p-2 rounded border border-gray-200">
-                📝 Please provide a detailed description (minimum 10 characters, maximum 500 characters)
-              </p>
               <textarea
                 value={chiefComplaint}
                 onChange={(e) => setChiefComplaint(e.target.value)}
-                placeholder="Please describe your symptoms or reason for visit in detail (e.g., experiencing headaches for 3 days, fever and cough, routine checkup needed)..."
+                placeholder="Please describe your symptoms or reason for visit..."
                 rows={4}
-                maxLength={500}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <div className="mt-1 flex justify-between items-center">
-                <p className={`text-sm ${
-                  chiefComplaint.trim().length < 10 
-                    ? 'text-red-600 font-medium' 
-                    : chiefComplaint.trim().length > 450 
-                    ? 'text-orange-600' 
-                    : 'text-gray-500'
-                }`}>
-                  {chiefComplaint.trim().length < 10 
-                    ? `⚠️ Minimum 10 characters required (${chiefComplaint.trim().length}/10)` 
-                    : `✓ ${chiefComplaint.trim().length} characters`
-                  }
-                </p>
-                <p className="text-sm text-gray-400">{chiefComplaint.length}/500</p>
-              </div>
             </div>
 
             {/* Continue Button */}
             <button
               onClick={handleContinueToConfirm}
-              disabled={!selectedDate || !selectedTime || !appointmentType || !chiefComplaint.trim() || chiefComplaint.trim().length < 10}
+              disabled={!selectedDate || !selectedTime || !appointmentType || !chiefComplaint.trim()}
               className="w-full py-3 px-6 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Continue to Confirm
@@ -641,7 +505,7 @@ const AppointmentBooking = () => {
                           day: 'numeric' 
                         })}
                       </p>
-                      <p className="text-sm text-gray-700">{selectedTime} <span className="text-xs text-gray-500">(15 min slot)</span></p>
+                      <p className="text-sm text-gray-700">{selectedTime}</p>
                     </div>
                   </div>
 
@@ -698,185 +562,8 @@ const AppointmentBooking = () => {
                     </>
                   ) : (
                     <>
-                      <ArrowRightIcon className="w-5 h-5" />
-                      <span>Proceed to Payment</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Step 4: Payment */}
-        {selectedStep === 4 && createdAppointment && selectedDoctor && (
-          <div className="bg-white rounded-2xl shadow-xl p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Payment</h2>
-              <button
-                onClick={() => setSelectedStep(3)}
-                className="text-blue-600 hover:text-blue-700 flex items-center space-x-2"
-              >
-                <ArrowLeftIcon className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            </div>
-
-            {/* Payment Summary */}
-            <div className="space-y-6">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6">
-                <h3 className="font-semibold text-gray-900 mb-4">Payment Summary</h3>
-                
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Consultation Fee</span>
-                    <span className="font-semibold text-gray-900">${createdAppointment.consultationFee}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Service Charge</span>
-                    <span className="font-semibold text-gray-900">$0</span>
-                  </div>
-                  <div className="border-t border-gray-300 pt-3 mt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-bold text-gray-900">Total Amount</span>
-                      <span className="text-2xl font-bold text-blue-600">${createdAppointment.consultationFee}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Payment Options Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <h4 className="font-semibold text-blue-900 mb-2">💡 Payment Options</h4>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• <strong>Pay Now:</strong> Pay online with Card/UPI/Wallet</li>
-                  <li>• <strong>Pay at Hospital:</strong> Pay when you arrive (Cash/Card/Insurance)</li>
-                </ul>
-              </div>
-
-              {/* Payment Method Selection */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Select Payment Option
-                </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  {[
-                    { value: 'card', label: 'Credit/Debit Card', icon: '💳', online: true },
-                    { value: 'upi', label: 'UPI', icon: '📱', online: true },
-                    { value: 'wallet', label: 'Wallet', icon: '💰', online: true },
-                    { value: 'pay-later', label: 'Pay at Hospital', icon: '🏥', online: false }
-                  ].map((method) => (
-                    <button
-                      key={method.value}
-                      onClick={() => setPaymentMethod(method.value)}
-                      className={`p-4 rounded-lg border-2 transition-all duration-200 text-center ${
-                        paymentMethod === method.value
-                          ? 'border-blue-600 bg-blue-50'
-                          : 'border-gray-200 hover:border-blue-300'
-                      }`}
-                    >
-                      <div className="text-3xl mb-2">{method.icon}</div>
-                      <div className="font-semibold text-gray-900 text-sm">{method.label}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Pay Later Info */}
-              {paymentMethod === 'pay-later' && (
-                <div className="space-y-4 p-6 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <div className="text-3xl">🏥</div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 mb-2">Pay at Hospital</h4>
-                      <p className="text-sm text-gray-700 mb-3">
-                        Your appointment will be scheduled. You can pay when you arrive at the hospital using:
-                      </p>
-                      <ul className="text-sm text-gray-600 space-y-1">
-                        <li>• <strong>Cash</strong> - Pay at the counter</li>
-                        <li>• <strong>Credit/Debit Card</strong> - At the counter</li>
-                        <li>• <strong>Insurance</strong> - If you have coverage</li>
-                        <li>• <strong>Government Fund</strong> - For eligible patients</li>
-                      </ul>
-                      <div className="mt-3 p-3 bg-white rounded border border-yellow-300">
-                        <p className="text-xs text-gray-600">
-                          ⚠️ <strong>Note:</strong> Please arrive 15 minutes early to complete payment before your appointment.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Payment Details */}
-              {paymentMethod === 'card' && (
-                <div className="space-y-4 p-6 bg-gray-50 rounded-lg">
-                  <h4 className="font-semibold text-gray-900">Card Details</h4>
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      placeholder="Card Number"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        placeholder="MM/YY"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                      <input
-                        type="text"
-                        placeholder="CVV"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Cardholder Name"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Security Notice */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-start space-x-3">
-                <CheckCircleIcon className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="text-sm text-green-800">
-                    <strong>Secure Payment:</strong> Your payment information is encrypted and secure. 
-                    We never store your card details.
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex space-x-4">
-                <button
-                  onClick={() => setSelectedStep(3)}
-                  className="flex-1 py-3 px-6 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold"
-                >
-                  Back
-                </button>
-                <button
-                  onClick={paymentMethod === 'pay-later' ? handlePayLater : handleProcessPayment}
-                  disabled={loading}
-                  className="flex-1 py-3 px-6 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      <span>Processing...</span>
-                    </>
-                  ) : (
-                    <>
                       <CheckCircleIcon className="w-5 h-5" />
-                      <span>
-                        {paymentMethod === 'pay-later' 
-                          ? 'Confirm Appointment' 
-                          : `Pay $${createdAppointment.consultationFee}`
-                        }
-                      </span>
+                      <span>Confirm Booking</span>
                     </>
                   )}
                 </button>

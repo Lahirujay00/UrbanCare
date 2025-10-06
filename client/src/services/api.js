@@ -96,17 +96,16 @@ export const appointmentAPI = {
   checkAvailability: (doctorId, date) => api.get(`/appointments/availability/${doctorId}`, { 
     params: { date } 
   }),
-  getUpcomingAppointments: () => api.get('/appointments/upcoming'),
-  getPastAppointments: () => api.get('/appointments/past'),
-  confirmAppointment: (id) => api.patch(`/appointments/${id}/confirm`),
-  completeAppointment: (id, data) => api.patch(`/appointments/${id}/complete`, data),
-  rescheduleAppointment: (id, newDateTime) => api.patch(`/appointments/${id}/reschedule`, newDateTime),
+  updateStatus: (id, status) => api.patch(`/appointments/${id}/status`, { status }),
+  checkIn: (id, method) => api.post(`/appointments/${id}/checkin`, { method }),
+  confirmPayment: (id, paymentData) => api.post(`/appointments/${id}/confirm-payment`, paymentData),
+  scheduleWithoutPayment: (id) => api.post(`/appointments/${id}/schedule-pay-later`),
+  processHospitalPayment: (id, paymentData) => api.post(`/appointments/${id}/hospital-payment`, paymentData),
 };
 
 // Medical Records API endpoints
 export const medicalRecordsAPI = {
   getRecords: (patientId) => api.get(`/medical-records`, { params: { patientId } }),
-  getRecordById: (id) => api.get(`/medical-records/${id}`),
   createRecord: (recordData) => api.post('/medical-records', recordData),
   updateRecord: (id, recordData) => api.put(`/medical-records/${id}`, recordData),
   deleteRecord: (id) => api.delete(`/medical-records/${id}`),
