@@ -8,7 +8,8 @@ import {
   ArrowRightIcon,
   ArrowLeftIcon,
   CurrencyDollarIcon,
-  XMarkIcon
+  XMarkIcon,
+  ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -35,13 +36,28 @@ const AppointmentBooking = () => {
   const [chiefComplaint, setChiefComplaint] = useState('');
   const [availableSlots, setAvailableSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
+  const [lockedSlots, setLockedSlots] = useState([]);
+  const [reservedSlot, setReservedSlot] = useState(null);
+  const [reservationTimer, setReservationTimer] = useState(null);
+  const [slotReservationTime, setSlotReservationTime] = useState(0);
   const [createdAppointment, setCreatedAppointment] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('card');
+  const [existingAppointment, setExistingAppointment] = useState(null);
 
   // Fetch doctors on component mount
   useEffect(() => {
     fetchDoctors();
+    checkExistingAppointments();
   }, []);
+
+  // Cleanup reservation timer on unmount
+  useEffect(() => {
+    return () => {
+      if (reservationTimer) {
+        clearInterval(reservationTimer);
+      }
+    };
+  }, [reservationTimer]);
 
   // Filter doctors when search or specialization changes
   useEffect(() => {
@@ -58,12 +74,13 @@ const AppointmentBooking = () => {
   const fetchDoctors = async () => {
     try {
       setLoading(true);
-      const response = await userAPI.getDoctors();
+      const response = await userAPI.getDoctors({
+        specialization: selectedSpecialization === 'all' ? undefined : selectedSpecialization
+      });
       
       if (response.data.success) {
-        const doctorsList = response.data.data.doctors || [];
-        setDoctors(doctorsList);
-        setFilteredDoctors(doctorsList);
+        setDoctors(response.data.data.doctors);
+        setFilteredDoctors(response.data.data.doctors);
       }
     } catch (error) {
       console.error('Error fetching doctors:', error);
@@ -71,6 +88,86 @@ const AppointmentBooking = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkExistingAppointments = async () => {
+    try {
+      const response = await appointmentAPI.getAppointments({
+        status: 'scheduled,confirmed',
+        patientId: user.id
+      });
+      
+      if (response.data.success) {
+        const appointments = response.data.data.appointments || [];
+        const futureAppointments = appointments.filter(apt => {
+          const appointmentDate = new Date(apt.appointmentDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          return appointmentDate >= today;
+        });
+        
+        if (futureAppointments.length > 0) {
+          setExistingAppointment(futureAppointments[0]);
+          console.log('Found existing appointment:', futureAppointments[0]);
+        } else {
+          setExistingAppointment(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing appointments:', error);
+      // Don't block the booking process if this fails
+      setExistingAppointment(null);
+    }
+  };
+
+  const reserveSlot = async (slot) => {
+    try {
+      // Reserve slot for 10 minutes
+      const reservationData = {
+        doctorId: selectedDoctor._id,
+        date: selectedDate,
+        time: slot,
+        patientId: user.id,
+        reservationDuration: 10 * 60 * 1000 // 10 minutes in milliseconds
+      };
+
+      // Simulate slot reservation API call
+      // In real implementation, this would call the backend
+      setReservedSlot(slot);
+      setSlotReservationTime(10 * 60); // 10 minutes in seconds
+      
+      // Start countdown timer
+      const timer = setInterval(() => {
+        setSlotReservationTime(prev => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            setReservedSlot(null);
+            setSelectedTime('');
+            toast.warning('Slot reservation expired. Please select again.');
+            fetchAvailableSlots(); // Refresh slots
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      setReservationTimer(timer);
+      toast.success(`Slot reserved for 10 minutes`);
+      
+    } catch (error) {
+      console.error('Error reserving slot:', error);
+      toast.error('Failed to reserve slot');
+    }
+  };
+
+  const releaseSlot = () => {
+    if (reservationTimer) {
+      clearInterval(reservationTimer);
+      setReservationTimer(null);
+    }
+    setReservedSlot(null);
+    setSlotReservationTime(0);
+    setSelectedTime('');
   };
 
   const filterDoctors = () => {
@@ -97,37 +194,59 @@ const AppointmentBooking = () => {
     try {
       setLoadingSlots(true);
       
-      // Get doctor's availability for the selected date
-      if (selectedDoctor.availability && selectedDoctor.availability[selectedDate]) {
-        const doctorSlots = selectedDoctor.availability[selectedDate] || [];
+      // Generate standard time slots (9 AM to 5 PM, 15-minute intervals)
+      const generateTimeSlots = () => {
+        const slots = [];
+        const startHour = 9; // 9 AM
+        const endHour = 17; // 5 PM
         
-        // If API is available, check which slots are already booked
-        try {
-          const response = await appointmentAPI.checkAvailability(
-            selectedDoctor._id,
-            selectedDate
-          );
-          
-          if (response.data.success) {
-            const bookedSlots = response.data.data.bookedSlots || [];
-            const availableSlots = doctorSlots.filter(slot => !bookedSlots.includes(slot));
-            setAvailableSlots(availableSlots);
-          } else {
-            setAvailableSlots(doctorSlots);
+        for (let hour = startHour; hour < endHour; hour++) {
+          for (let minute = 0; minute < 60; minute += 15) {
+            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            slots.push(timeString);
           }
-        } catch (apiError) {
-          // If API fails, show all doctor's slots
-          console.log('API check failed, showing all doctor slots');
+        }
+        return slots;
+      };
+
+      // Get doctor's available slots (use standard slots if not specified)
+      let doctorSlots = [];
+      if (selectedDoctor.availability && selectedDoctor.availability[selectedDate]) {
+        doctorSlots = selectedDoctor.availability[selectedDate];
+      } else if (selectedDoctor.workingHours) {
+        // Use doctor's working hours to generate slots
+        doctorSlots = generateTimeSlots();
+      } else {
+        // Default slots
+        doctorSlots = generateTimeSlots();
+      }
+      
+      // Check which slots are already booked
+      try {
+        const response = await appointmentAPI.getAppointments({
+          doctorId: selectedDoctor._id,
+          date: selectedDate,
+          status: 'scheduled,confirmed'
+        });
+        
+        if (response.data.success) {
+          const appointments = response.data.data.appointments || [];
+          const bookedSlots = appointments.map(apt => apt.appointmentTime);
+          const availableSlots = doctorSlots.filter(slot => !bookedSlots.includes(slot));
+          setAvailableSlots(availableSlots);
+        } else {
           setAvailableSlots(doctorSlots);
         }
-      } else {
-        // No availability set for this date
-        setAvailableSlots([]);
-        toast.info('Doctor has no availability set for this date');
+      } catch (apiError) {
+        // If API fails, show all doctor's slots
+        console.log('API check failed, showing all doctor slots:', apiError);
+        setAvailableSlots(doctorSlots);
       }
+      
     } catch (error) {
       console.error('Error fetching slots:', error);
       setAvailableSlots([]);
+      toast.error('Failed to load available slots');
     } finally {
       setLoadingSlots(false);
     }
@@ -144,8 +263,27 @@ const AppointmentBooking = () => {
     setSelectedTime(''); // Reset time when date changes
   };
 
-  const handleTimeSelect = (time) => {
+  const handleTimeSelect = async (time) => {
+    // Check if patient already has an existing appointment
+    if (existingAppointment) {
+      toast.error(`You already have an appointment scheduled for ${new Date(existingAppointment.appointmentDate).toLocaleDateString()} at ${existingAppointment.appointmentTime}. Please cancel it first to book a new one.`);
+      return;
+    }
+
+    // Release any previously reserved slot
+    if (reservedSlot && reservedSlot !== time) {
+      releaseSlot();
+    }
+
+    // Check if slot is already locked by another user
+    if (lockedSlots.includes(time)) {
+      toast.error('This slot is currently being booked by another patient. Please select a different time.');
+      return;
+    }
+
+    // Reserve the selected slot
     setSelectedTime(time);
+    await reserveSlot(time);
   };
 
   const handleContinueToConfirm = () => {
@@ -500,26 +638,92 @@ const AppointmentBooking = () => {
                   </div>
                 ) : availableSlots.length > 0 ? (
                   <>
+                    {/* Existing Appointment Warning */}
+                    {existingAppointment && (
+                      <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-xs text-red-700">
+                          <ExclamationTriangleIcon className="w-4 h-4 inline mr-1" />
+                          You already have an appointment on <strong>{new Date(existingAppointment.appointmentDate).toLocaleDateString()}</strong> at <strong>{existingAppointment.appointmentTime}</strong>. 
+                          Please cancel it first to book a new appointment.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Slot Reservation Timer */}
+                    {reservedSlot && slotReservationTime > 0 && (
+                      <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                        <p className="text-xs text-yellow-700">
+                          <ClockIcon className="w-4 h-4 inline mr-1" />
+                          Slot <strong>{reservedSlot}</strong> reserved for <strong>{Math.floor(slotReservationTime / 60)}:{(slotReservationTime % 60).toString().padStart(2, '0')}</strong> minutes. 
+                          Complete booking before it expires.
+                        </p>
+                      </div>
+                    )}
+
                     <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                       <p className="text-xs text-blue-700">
                         <ClockIcon className="w-4 h-4 inline mr-1" />
                         Each appointment slot is <strong>15 minutes</strong>. Select your preferred time.
+                        {!existingAppointment && <span className="block mt-1">🔒 Slots are reserved for 10 minutes after selection.</span>}
                       </p>
                     </div>
                     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-96 overflow-y-auto p-2">
-                      {availableSlots.map((slot) => (
-                        <button
-                          key={slot}
-                          onClick={() => handleTimeSelect(slot)}
-                          className={`py-2 px-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium ${
-                            selectedTime === slot
-                              ? 'border-blue-600 bg-blue-600 text-white shadow-lg transform scale-105'
-                              : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700'
-                          }`}
-                        >
-                          {slot}
-                        </button>
-                      ))}
+                      {availableSlots.map((slot) => {
+                        const isSelected = selectedTime === slot;
+                        const isReserved = reservedSlot === slot;
+                        const isLocked = lockedSlots.includes(slot);
+                        const isDisabled = existingAppointment || isLocked;
+                        
+                        return (
+                          <button
+                            key={slot}
+                            onClick={() => !isDisabled && handleTimeSelect(slot)}
+                            disabled={isDisabled}
+                            className={`py-2 px-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium relative ${
+                              isSelected && isReserved
+                                ? 'border-green-600 bg-green-600 text-white shadow-lg transform scale-105'
+                                : isSelected
+                                ? 'border-blue-600 bg-blue-600 text-white shadow-lg transform scale-105'
+                                : isLocked
+                                ? 'border-red-200 bg-red-50 text-red-400 cursor-not-allowed'
+                                : isDisabled
+                                ? 'border-gray-200 bg-gray-100 text-gray-400 cursor-not-allowed'
+                                : 'border-gray-200 hover:border-blue-400 hover:bg-blue-50 text-gray-700 hover:shadow-md'
+                            }`}
+                          >
+                            {slot}
+                            {isReserved && (
+                              <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></span>
+                            )}
+                            {isLocked && (
+                              <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white"></span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    
+                    {/* Slot Legend */}
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <p className="text-xs font-medium text-gray-700 mb-2">Slot Status Legend:</p>
+                      <div className="flex flex-wrap gap-4 text-xs">
+                        <div className="flex items-center space-x-1">
+                          <div className="w-3 h-3 bg-gray-200 border border-gray-300 rounded"></div>
+                          <span className="text-gray-600">Available</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <div className="w-3 h-3 bg-blue-600 rounded relative">
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white"></span>
+                          </div>
+                          <span className="text-gray-600">Reserved (10 min)</span>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          <div className="w-3 h-3 bg-red-50 border border-red-200 rounded relative">
+                            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
+                          </div>
+                          <span className="text-gray-600">Being Booked</span>
+                        </div>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -786,12 +990,14 @@ const AppointmentBooking = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   Select Payment Option
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                   {[
                     { value: 'card', label: 'Credit/Debit Card', icon: '💳', online: true },
                     { value: 'upi', label: 'UPI', icon: '📱', online: true },
                     { value: 'wallet', label: 'Wallet', icon: '💰', online: true },
-                    { value: 'pay-later', label: 'Pay at Hospital', icon: '🏥', online: false }
+                    { value: 'cash', label: 'Cash', icon: '💵', online: false },
+                    { value: 'insurance', label: 'Insurance Coverage', icon: '🛡️', online: false },
+                    { value: 'government', label: 'Government Fund', icon: '🏛️', online: false }
                   ].map((method) => (
                     <button
                       key={method.value}
@@ -808,6 +1014,103 @@ const AppointmentBooking = () => {
                   ))}
                 </div>
               </div>
+
+              {/* Cash Payment Info */}
+              {paymentMethod === 'cash' && (
+                <div className="space-y-4 p-6 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="text-3xl">💵</div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-2">Cash Payment</h4>
+                      <p className="text-sm text-gray-700 mb-3">
+                        Your appointment will be scheduled. Please bring exact cash amount when you arrive at the hospital.
+                      </p>
+                      <div className="mt-3 p-3 bg-white rounded border border-green-300">
+                        <p className="text-xs text-gray-600">
+                          💡 <strong>Tip:</strong> Please arrive 15 minutes early to complete payment at the counter.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Insurance Coverage */}
+              {paymentMethod === 'insurance' && (
+                <div className="space-y-4 p-6 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="text-3xl">🛡️</div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-2">Insurance Coverage</h4>
+                      <p className="text-sm text-gray-700 mb-3">
+                        Please provide your insurance details. Coverage will be verified before your appointment.
+                      </p>
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          placeholder="Insurance Provider"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Policy Number"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Group Number (if applicable)"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="mt-3 p-3 bg-white rounded border border-blue-300">
+                        <p className="text-xs text-gray-600">
+                          ℹ️ <strong>Note:</strong> Insurance coverage will be verified. Any uncovered amount must be paid at the hospital.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Government Fund */}
+              {paymentMethod === 'government' && (
+                <div className="space-y-4 p-6 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div className="flex items-start space-x-3">
+                    <div className="text-3xl">🏛️</div>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 mb-2">Government Fund</h4>
+                      <p className="text-sm text-gray-700 mb-3">
+                        Please provide your government fund eligibility details for verification.
+                      </p>
+                      <div className="space-y-3">
+                        <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
+                          <option value="">Select Fund Type</option>
+                          <option value="medicaid">Medicaid</option>
+                          <option value="medicare">Medicare</option>
+                          <option value="veterans">Veterans Affairs</option>
+                          <option value="disability">Disability Fund</option>
+                          <option value="low-income">Low Income Support</option>
+                        </select>
+                        <input
+                          type="text"
+                          placeholder="Beneficiary ID"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                        <input
+                          type="text"
+                          placeholder="Reference Number (if any)"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="mt-3 p-3 bg-white rounded border border-purple-300">
+                        <p className="text-xs text-gray-600">
+                          🔍 <strong>Verification:</strong> Eligibility will be verified before your appointment. Please bring supporting documents.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Pay Later Info */}
               {paymentMethod === 'pay-later' && (

@@ -101,6 +101,7 @@ router.post('/', auth, authorize('staff', 'admin'), async (req, res) => {
 router.get('/patient/:patientId', auth, async (req, res) => {
   try {
     const { patientId } = req.params;
+    console.log('Fetching health card for patient:', patientId);
 
     // Check authorization
     if (req.user.role === 'patient' && req.user.id !== patientId) {
@@ -110,11 +111,14 @@ router.get('/patient/:patientId', auth, async (req, res) => {
       });
     }
 
+    // First, try to find existing health card
     let healthCard = await HealthCard.findOne({ patient: patientId })
       .populate('patient', 'firstName lastName email phone dateOfBirth gender');
 
     if (!healthCard) {
-      // Auto-create health card for patient if it doesn't exist
+      console.log('No health card found, creating new one...');
+      
+      // Check if patient exists
       const patient = await User.findById(patientId);
       if (!patient || patient.role !== 'patient') {
         return res.status(404).json({
@@ -123,54 +127,50 @@ router.get('/patient/:patientId', auth, async (req, res) => {
         });
       }
 
-      // Generate card number
-      const cardNumber = await HealthCard.generateCardNumber();
+      console.log('Patient found:', patient.firstName, patient.lastName);
 
-      // Create QR code data
-      const qrData = {
-        cardNumber,
-        patientId,
-        name: `${patient.firstName} ${patient.lastName}`,
-        emergencyContact: patient.phone || 'Not provided'
-      };
+      try {
+        // Generate card number
+        const cardNumber = await HealthCard.generateCardNumber();
+        console.log('Generated card number:', cardNumber);
 
-      // Generate QR code
-      const qrCode = await QRCode.toDataURL(JSON.stringify(qrData));
+        // Create QR code data
+        const qrData = {
+          cardNumber,
+          patientId,
+          name: `${patient.firstName} ${patient.lastName}`,
+          emergencyContact: patient.phone || 'Not provided'
+        };
 
-      // Create new health card
-      healthCard = new HealthCard({
-        patient: patientId,
-        cardNumber,
-        qrCode,
-        bloodGroup: 'Not specified',
-        emergencyContact: {
-          name: 'Emergency Contact',
-          phone: patient.phone || 'Not provided',
-          relationship: 'Not specified'
-        },
-        allergies: [],
-        chronicConditions: [],
-        insuranceInfo: {
-          provider: 'Not specified',
-          policyNumber: 'Not provided'
-        },
-        isActive: true,
-        createdBy: patientId // Auto-created
-      });
+        // Generate QR code
+        const qrCode = await QRCode.toDataURL(JSON.stringify(qrData));
+        console.log('QR code generated successfully');
 
-      await healthCard.save();
-      
-      // Populate the patient data
-      await healthCard.populate('patient', 'firstName lastName email phone dateOfBirth gender');
+        // Set expiry date (5 years from now)
+        const expiryDate = new Date();
+        expiryDate.setFullYear(expiryDate.getFullYear() + 5);
+
+        // Create new health card with minimal required fields
+        healthCard = new HealthCard({
+          patient: patientId,
+          cardNumber,
+          qrCode,
+          expiryDate
+        });
+
+        console.log('Saving health card...');
+        await healthCard.save();
+        console.log('Health card saved successfully');
+        
+        // Populate the patient data
+        await healthCard.populate('patient', 'firstName lastName email phone dateOfBirth gender');
+        console.log('Health card populated with patient data');
+
+      } catch (createError) {
+        console.error('Error creating health card:', createError);
+        throw createError;
+      }
     }
-
-    // Log access
-    await healthCard.logAccess(
-      req.user.id, 
-      'manual', 
-      req.ip, 
-      'Card details viewed'
-    );
 
     res.json({
       success: true,
@@ -179,10 +179,12 @@ router.get('/patient/:patientId', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Get health card error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Server error',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

@@ -5,10 +5,13 @@ import {
   CalendarIcon,
   CheckCircleIcon,
   ClockIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  ShieldCheckIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
 import { appointmentAPI, userAPI } from '../../services/api';
+import InsuranceVerification from '../../components/Insurance/InsuranceVerification';
 import toast from 'react-hot-toast';
 
 const StaffDashboard = () => {
@@ -18,11 +21,18 @@ const StaffDashboard = () => {
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
+  const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({
     pending: 0,
     checkedIn: 0,
     completed: 0
   });
+
+  const tabs = [
+    { id: 'overview', name: 'Overview', icon: ChartBarIcon },
+    { id: 'patient-search', name: 'Patient Search', icon: MagnifyingGlassIcon },
+    { id: 'insurance', name: 'Insurance Verification', icon: ShieldCheckIcon }
+  ];
 
   useEffect(() => {
     fetchStaffData();

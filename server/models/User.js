@@ -137,13 +137,14 @@ const userSchema = new mongoose.Schema({
   },
   qualification: {
     type: String,
-    required: false // Allow completion during profile setup
+    required: false
   },
   consultationFee: {
     type: Number,
     required: false // Allow completion during profile setup
   },
-  availableHours: {
+  // Doctor Schedule
+  schedule: {
     monday: { start: String, end: String, available: Boolean },
     tuesday: { start: String, end: String, available: Boolean },
     wednesday: { start: String, end: String, available: Boolean },
@@ -153,14 +154,51 @@ const userSchema = new mongoose.Schema({
     sunday: { start: String, end: String, available: Boolean }
   },
   
-  // Doctor Availability (Date-specific 15-minute slots)
+  // Doctor Availability (Weekly schedule)
   availability: {
+    monday: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: '09:00' },
+      endTime: { type: String, default: '17:00' }
+    },
+    tuesday: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: '09:00' },
+      endTime: { type: String, default: '17:00' }
+    },
+    wednesday: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: '09:00' },
+      endTime: { type: String, default: '17:00' }
+    },
+    thursday: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: '09:00' },
+      endTime: { type: String, default: '17:00' }
+    },
+    friday: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: '09:00' },
+      endTime: { type: String, default: '17:00' }
+    },
+    saturday: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: '09:00' },
+      endTime: { type: String, default: '13:00' }
+    },
+    sunday: {
+      enabled: { type: Boolean, default: false },
+      startTime: { type: String, default: '09:00' },
+      endTime: { type: String, default: '13:00' }
+    }
+  },
+  
+  // Date-specific slot bookings
+  dateSlots: {
     type: Map,
     of: [String],
     default: new Map()
   },
-  
-  // Additional doctor profile fields
   qualifications: [String],
   languages: [String],
   experience: String,

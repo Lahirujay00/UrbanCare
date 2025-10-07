@@ -5,16 +5,21 @@ import {
   CalendarIcon,
   CurrencyDollarIcon,
   ArrowUpIcon,
-  ArrowDownIcon
+  ArrowDownIcon,
+  ClockIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
 import { reportsAPI, appointmentAPI, paymentAPI } from '../../services/api';
+import PeakHoursPrediction from '../../components/Analytics/PeakHoursPrediction';
+import ReportsDashboard from '../../components/Reports/ReportsDashboard';
 import toast from 'react-hot-toast';
 
 const ManagerDashboard = () => {
   const { user } = useAuth();
   
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({
     totalPatients: 0,
     totalDoctors: 0,
@@ -25,6 +30,12 @@ const ManagerDashboard = () => {
   });
   const [recentAppointments, setRecentAppointments] = useState([]);
   const [recentPayments, setRecentPayments] = useState([]);
+
+  const tabs = [
+    { id: 'overview', name: 'Overview', icon: ChartBarIcon },
+    { id: 'reports', name: 'Reports', icon: DocumentTextIcon },
+    { id: 'peak-hours', name: 'Peak Hours', icon: ClockIcon }
+  ];
 
   useEffect(() => {
     fetchManagerData();

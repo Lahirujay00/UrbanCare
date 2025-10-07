@@ -40,9 +40,9 @@ const Navbar = () => {
 
   const patientLinks = [
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Book Appointment', href: '/appointments/book' },
-    { name: 'Medical Records', href: '/records' },
-    { name: 'Health Card', href: '/digital-health-card' },
+    { name: 'Book Appointment', href: '/dashboard?tab=book-appointment' },
+    { name: 'Medical Records', href: '/dashboard?tab=documents' },
+    { name: 'Health Card', href: '/dashboard?tab=health-card' },
   ];
 
   const doctorLinks = [

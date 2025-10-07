@@ -77,7 +77,8 @@ export const authAPI = {
 // User API endpoints
 export const userAPI = {
   getProfile: () => api.get('/users/profile'),
-  updateProfile: (userData) => api.put('/users/profile', userData),
+  getUserProfile: (userId) => api.get(`/users/${userId}/profile`),
+  updateProfile: (userId, userData) => api.put(`/users/${userId}/profile`, userData),
   uploadAvatar: (formData) => api.post('/users/avatar', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),

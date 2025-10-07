@@ -15,18 +15,21 @@ import {
   CloudArrowUpIcon,
   CurrencyDollarIcon
 } from '@heroicons/react/24/outline';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { appointmentAPI, medicalRecordsAPI } from '../../services/api';
 import HealthCardDisplay from '../../components/HealthCard/HealthCardDisplay';
 import DocumentManager from '../../components/Documents/DocumentManager';
 import RefundManager from '../../components/Refunds/RefundManager';
 import ChatBot from '../../components/ChatBot/ChatBot';
+import AppointmentBooking from './AppointmentBooking';
+import MedicalRecords from './MedicalRecords';
 import toast from 'react-hot-toast';
 
 const PatientDashboardEnhanced = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // State management
   const [loading, setLoading] = useState(true);
@@ -43,10 +46,20 @@ const PatientDashboardEnhanced = () => {
   // Tab configuration
   const tabs = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },
+    { id: 'book-appointment', name: 'Book Appointment', icon: CalendarIcon },
     { id: 'health-card', name: 'Health Card', icon: QrCodeIcon },
-    { id: 'documents', name: 'Documents', icon: DocumentTextIcon },
+    { id: 'documents', name: 'Medical Records', icon: DocumentTextIcon },
     { id: 'refunds', name: 'Refunds', icon: CurrencyDollarIcon }
   ];
+
+  // Handle URL parameters for tab navigation
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && tabs.some(tab => tab.id === tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [location.search]);
 
   // Fetch dashboard data
   useEffect(() => {
@@ -154,7 +167,7 @@ const PatientDashboardEnhanced = () => {
               </p>
             </div>
             <button
-              onClick={() => navigate('/appointments/book')}
+              onClick={() => setActiveTab('book-appointment')}
               className="hidden sm:flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
             >
               <PlusIcon className="w-5 h-5" />
@@ -259,7 +272,7 @@ const PatientDashboardEnhanced = () => {
                     </h2>
                   </div>
                   <button
-                    onClick={() => navigate('/appointments/book')}
+                    onClick={() => setActiveTab('book-appointment')}
                     className="inline-flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
                   >
                     <PlusIcon className="w-4 h-4" />
@@ -341,7 +354,7 @@ const PatientDashboardEnhanced = () => {
                     <h3 className="text-lg font-medium text-gray-900 mb-2">No upcoming appointments</h3>
                     <p className="text-gray-500 mb-6">Schedule your next appointment to stay on top of your health</p>
                     <button
-                      onClick={() => navigate('/appointments/book')}
+                      onClick={() => setActiveTab('book-appointment')}
                       className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
                     >
                       <PlusIcon className="w-5 h-5" />
@@ -375,11 +388,11 @@ const PatientDashboardEnhanced = () => {
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                    <CloudArrowUpIcon className="w-6 h-6 text-white" />
+                    <DocumentTextIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">Manage Documents</h3>
-                    <p className="text-sm text-gray-600">Upload and organize medical files</p>
+                    <h3 className="font-bold text-gray-900">Medical Records</h3>
+                    <p className="text-sm text-gray-600">View and manage your medical history</p>
                   </div>
                 </div>
               </button>
@@ -402,11 +415,22 @@ const PatientDashboardEnhanced = () => {
           </>
         )}
 
+        {/* Book Appointment Tab */}
+        {activeTab === 'book-appointment' && (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+            <AppointmentBooking />
+          </div>
+        )}
+
         {/* Health Card Tab */}
         {activeTab === 'health-card' && <HealthCardDisplay />}
 
-        {/* Documents Tab */}
-        {activeTab === 'documents' && <DocumentManager />}
+        {/* Medical Records Tab */}
+        {activeTab === 'documents' && (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
+            <MedicalRecords />
+          </div>
+        )}
 
         {/* Refunds Tab */}
         {activeTab === 'refunds' && <RefundManager />}

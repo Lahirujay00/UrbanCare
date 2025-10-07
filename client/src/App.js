@@ -20,14 +20,11 @@ import VerifyEmail from './pages/auth/VerifyEmail';
 
 // Patient Pages
 import PatientDashboard from './pages/patient/PatientDashboardEnhanced';
-import AppointmentBooking from './pages/patient/AppointmentBooking';
-import MedicalRecords from './pages/patient/MedicalRecords';
-import DigitalHealthCard from './pages/patient/DigitalHealthCard';
 import Profile from './pages/patient/Profile';
 import ProfileEditor from './pages/patient/ProfileEditor';
 
 // Doctor Pages
-import DoctorDashboard from './pages/doctor/DashboardFull';
+import DoctorDashboard from './pages/doctor/DoctorDashboardEnhanced';
 import PatientRecords from './pages/doctor/PatientRecords';
 import Appointments from './pages/doctor/Appointments';
 import AvailabilityManagement from './pages/doctor/AvailabilityManagement';
@@ -164,44 +161,25 @@ function App() {
                 </ProtectedRoute>
               } />
               
+              {/* Legacy routes - redirect to dashboard with tab parameter */}
               <Route path="/appointments/book" element={
-                <ProtectedRoute allowedRoles={['patient']}>
-                  <Layout>
-                    <AppointmentBooking />
-                  </Layout>
-                </ProtectedRoute>
+                <Navigate to="/dashboard?tab=book-appointment" replace />
               } />
               
               <Route path="/book-appointment" element={
-                <ProtectedRoute allowedRoles={['patient']}>
-                  <Layout>
-                    <AppointmentBooking />
-                  </Layout>
-                </ProtectedRoute>
+                <Navigate to="/dashboard?tab=book-appointment" replace />
               } />
               
               <Route path="/records" element={
-                <ProtectedRoute allowedRoles={['patient']}>
-                  <Layout>
-                    <MedicalRecords />
-                  </Layout>
-                </ProtectedRoute>
+                <Navigate to="/dashboard?tab=documents" replace />
               } />
               
               <Route path="/medical-records" element={
-                <ProtectedRoute allowedRoles={['patient']}>
-                  <Layout>
-                    <MedicalRecords />
-                  </Layout>
-                </ProtectedRoute>
+                <Navigate to="/dashboard?tab=documents" replace />
               } />
               
               <Route path="/digital-health-card" element={
-                <ProtectedRoute allowedRoles={['patient']}>
-                  <Layout>
-                    <DigitalHealthCard />
-                  </Layout>
-                </ProtectedRoute>
+                <Navigate to="/dashboard?tab=health-card" replace />
               } />
               
               <Route path="/profile" element={
