@@ -143,7 +143,7 @@ const PatientDashboardEnhanced = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your dashboard...</p>
@@ -153,7 +153,7 @@ const PatientDashboardEnhanced = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50  to-indigo-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -167,11 +167,11 @@ const PatientDashboardEnhanced = () => {
               </p>
             </div>
             <button
-              onClick={() => setActiveTab('book-appointment')}
-              className="hidden sm:flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
+              onClick={() => setActiveTab('documents')}
+              className="hidden sm:flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-700 hover:to-emerald-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-medium"
             >
-              <PlusIcon className="w-5 h-5" />
-              <span>Book Appointment</span>
+              <DocumentTextIcon className="w-5 h-5" />
+              <span>View Medical History</span>
             </button>
           </div>
         </div>
@@ -330,18 +330,12 @@ const PatientDashboardEnhanced = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="flex flex-col space-y-2">
+                          <div>
                             <button 
                               onClick={() => navigate(`/appointments/${appointment._id}`)}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-md"
+                              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium shadow-md"
                             >
                               View Details
-                            </button>
-                            <button 
-                              onClick={() => handleCancelAppointment(appointment._id)}
-                              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors font-medium"
-                            >
-                              Cancel
                             </button>
                           </div>
                         </div>

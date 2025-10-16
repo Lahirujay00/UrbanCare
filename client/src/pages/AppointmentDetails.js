@@ -20,6 +20,7 @@ import { appointmentAPI, refundAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
 const AppointmentDetails = () => {
+  // Enhanced with card layouts
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -166,35 +167,39 @@ const AppointmentDetails = () => {
         <div className="mb-8">
           <button
             onClick={() => navigate('/dashboard')}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
           >
             <ArrowLeftIcon className="w-5 h-5 mr-2" />
             Back to Dashboard
           </button>
           
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Appointment Details</h1>
-              <p className="text-gray-600 mt-2">
-                Appointment ID: {appointment._id}
-              </p>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(appointment.status)}`}>
-                {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
-              </span>
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(appointment.paymentStatus)}`}>
-                {appointment.paymentStatus === 'pay-at-hospital' ? 'Pay at Hospital' : 
-                 appointment.paymentStatus.charAt(0).toUpperCase() + appointment.paymentStatus.slice(1)}
-              </span>
+          <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Appointment Details</h1>
+                <p className="text-gray-600 mt-2">
+                  Appointment ID: {appointment._id}
+                </p>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(appointment.status)}`}>
+                  {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                </span>
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getPaymentStatusColor(appointment.paymentStatus)}`}>
+                  {appointment.paymentStatus === 'pay-at-hospital' ? 'Pay at Hospital' : 
+                   appointment.paymentStatus.charAt(0).toUpperCase() + appointment.paymentStatus.slice(1)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+        {/* Main Content Card Wrapper */}
+        <div className="bg-white rounded-xl shadow-lg border-2 border-gray-200 p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
             {/* Appointment Information */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-bold text-gray-900 mb-6">Appointment Information</h2>
@@ -261,55 +266,67 @@ const AppointmentDetails = () => {
               </h2>
               
               {user.role === 'patient' && appointment.doctor ? (
-                <div className="flex items-start space-x-4">
-                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-                    <UserIcon className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Dr. {appointment.doctor.firstName} {appointment.doctor.lastName}
-                    </h3>
-                    <p className="text-blue-600 font-medium">{appointment.doctor.specialization}</p>
-                    
-                    <div className="mt-4 space-y-2">
-                      {appointment.doctor.email && (
-                        <div className="flex items-center space-x-2">
-                          <EnvelopeIcon className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">{appointment.doctor.email}</span>
-                        </div>
-                      )}
-                      {appointment.doctor.phone && (
-                        <div className="flex items-center space-x-2">
-                          <PhoneIcon className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">{appointment.doctor.phone}</span>
-                        </div>
-                      )}
+                <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200 shadow-sm">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <UserIcon className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        Dr. {appointment.doctor.firstName} {appointment.doctor.lastName}
+                      </h3>
+                      <p className="text-blue-600 font-medium mb-4">{appointment.doctor.specialization}</p>
+                      
+                      <div className="space-y-3 mt-4">
+                        {appointment.doctor.email && (
+                          <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
+                            <div className="flex items-center space-x-3">
+                              <EnvelopeIcon className="w-5 h-5 text-blue-500" />
+                              <span className="text-sm text-gray-900 font-semibold">{appointment.doctor.email}</span>
+                            </div>
+                          </div>
+                        )}
+                        {appointment.doctor.phone && (
+                          <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
+                            <div className="flex items-center space-x-3">
+                              <PhoneIcon className="w-5 h-5 text-green-500" />
+                              <span className="text-sm text-gray-900 font-semibold">{appointment.doctor.phone}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
               ) : appointment.patient ? (
-                <div className="flex items-start space-x-4">
-                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-                    <UserIcon className="w-8 h-8 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      {appointment.patient.firstName} {appointment.patient.lastName}
-                    </h3>
-                    
-                    <div className="mt-4 space-y-2">
-                      {appointment.patient.email && (
-                        <div className="flex items-center space-x-2">
-                          <EnvelopeIcon className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">{appointment.patient.email}</span>
-                        </div>
-                      )}
-                      {appointment.patient.phone && (
-                        <div className="flex items-center space-x-2">
-                          <PhoneIcon className="w-4 h-4 text-gray-400" />
-                          <span className="text-sm text-gray-600">{appointment.patient.phone}</span>
-                        </div>
-                      )}
+                <div className="bg-gray-50 rounded-xl p-6 border-2 border-gray-200 shadow-sm">
+                  <div className="flex items-start space-x-4">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      <UserIcon className="w-8 h-8 text-green-600" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                        {appointment.patient.firstName} {appointment.patient.lastName}
+                      </h3>
+                      
+                      <div className="space-y-3 mt-4">
+                        {appointment.patient.email && (
+                          <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
+                            <div className="flex items-center space-x-3">
+                              <EnvelopeIcon className="w-5 h-5 text-blue-500" />
+                              <span className="text-sm text-gray-900 font-semibold">{appointment.patient.email}</span>
+                            </div>
+                          </div>
+                        )}
+                        {appointment.patient.phone && (
+                          <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
+                            <div className="flex items-center space-x-3">
+                              <PhoneIcon className="w-5 h-5 text-green-500" />
+                              <span className="text-sm text-gray-900 font-semibold">{appointment.patient.phone}</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -372,28 +389,37 @@ const AppointmentDetails = () => {
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Payment Details</h3>
               
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Consultation Fee:</span>
-                  <span className="font-semibold">${appointment.consultationFee || 'N/A'}</span>
-                </div>
-                
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Payment Status:</span>
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPaymentStatusColor(appointment.paymentStatus)}`}>
-                    {appointment.paymentStatus === 'pay-at-hospital' ? 'Pay at Hospital' : 
-                     appointment.paymentStatus.charAt(0).toUpperCase() + appointment.paymentStatus.slice(1)}
-                  </span>
-                </div>
-                
-                {appointment.paymentMethod && (
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Payment Method:</span>
-                    <span className="font-semibold">{appointment.paymentMethod}</span>
+              <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
+                <div className="space-y-3">
+                  <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-700 text-sm font-medium">Consultation Fee</span>
+                      <span className="font-bold text-gray-900 text-lg">${appointment.consultationFee || 'N/A'}</span>
+                    </div>
                   </div>
-                )}
+                  
+                  <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-700 text-sm font-medium">Payment Status</span>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getPaymentStatusColor(appointment.paymentStatus)}`}>
+                        {appointment.paymentStatus === 'pay-at-hospital' ? 'Pay at Hospital' : 
+                         appointment.paymentStatus.charAt(0).toUpperCase() + appointment.paymentStatus.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {appointment.paymentMethod && (
+                    <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-700 text-sm font-medium">Payment Method</span>
+                        <span className="font-bold text-gray-900">{appointment.paymentMethod}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

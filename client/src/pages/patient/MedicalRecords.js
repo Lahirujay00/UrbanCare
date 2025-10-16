@@ -11,11 +11,15 @@ import {
   BeakerIcon,
   CameraIcon,
   FunnelIcon,
-  ClockIcon
+  ClockIcon,
+  CloudArrowUpIcon,
+  PlusIcon,
+  CheckCircleIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { medicalRecordsAPI } from '../../services/api';
+import { medicalRecordsAPI, documentAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const MedicalRecords = () => {
@@ -25,13 +29,24 @@ const MedicalRecords = () => {
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
+  const [uploadedDocuments, setUploadedDocuments] = useState([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    description: '',
+    category: 'lab-report',
+    file: null
+  });
 
   useEffect(() => {
     fetchMedicalRecords();
+    fetchUploadedDocuments();
   }, []);
 
   useEffect(() => {
@@ -53,6 +68,21 @@ const MedicalRecords = () => {
       toast.error('Failed to load medical records');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchUploadedDocuments = async () => {
+    if (!user?._id) return;
+    
+    try {
+      setLoadingDocuments(true);
+      const response = await documentAPI.getPatientDocuments(user._id);
+      setUploadedDocuments(response.data || []);
+    } catch (error) {
+      console.error('Error fetching uploaded documents:', error);
+      toast.error('Failed to load uploaded documents');
+    } finally {
+      setLoadingDocuments(false);
     }
   };
 
@@ -79,6 +109,72 @@ const MedicalRecords = () => {
   const handleViewRecord = (record) => {
     setSelectedRecord(record);
     setShowModal(true);
+  };
+
+  const handleUploadDocument = async () => {
+    if (!uploadForm.title.trim()) {
+      toast.error('Please enter a document title');
+      return;
+    }
+    if (!uploadForm.file) {
+      toast.error('Please select a file to upload');
+      return;
+    }
+
+    try {
+      setUploadingDocument(true);
+      
+      const formData = new FormData();
+      formData.append('document', uploadForm.file);
+      formData.append('title', uploadForm.title);
+      formData.append('description', uploadForm.description);
+      formData.append('documentType', uploadForm.category);
+      formData.append('category', uploadForm.category);
+      formData.append('uploadedBy', 'patient');
+      formData.append('status', 'pending'); // Pending review by hospital reception
+      
+      // Upload document to server
+      const response = await documentAPI.uploadDocument(formData);
+      
+      if (response.data.success) {
+        toast.success('Document uploaded successfully! Pending review by hospital reception.');
+        setShowUploadModal(false);
+        setUploadForm({
+          title: '',
+          description: '',
+          category: 'lab-report',
+          file: null
+        });
+        // Refresh uploaded documents list
+        fetchUploadedDocuments();
+      } else {
+        throw new Error(response.data.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to upload document';
+      toast.error(errorMessage);
+    } finally {
+      setUploadingDocument(false);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        toast.error('File size must be less than 10MB');
+        return;
+      }
+      // Validate file type
+      const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Only PDF, JPEG, and PNG files are allowed');
+        return;
+      }
+      setUploadForm({ ...uploadForm, file });
+    }
   };
 
   const formatDate = (dateString) => {
@@ -126,6 +222,27 @@ const MedicalRecords = () => {
     return badges[priority] || badges.normal;
   };
 
+  const getStatusBadge = (status) => {
+    const badges = {
+      'pending': {
+        color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+        icon: ClockIcon,
+        label: 'Pending Review'
+      },
+      'approved': {
+        color: 'bg-green-100 text-green-700 border-green-200',
+        icon: CheckCircleIcon,
+        label: 'Approved'
+      },
+      'rejected': {
+        color: 'bg-red-100 text-red-700 border-red-200',
+        icon: XCircleIcon,
+        label: 'Rejected'
+      }
+    };
+    return badges[status] || badges.pending;
+  };
+
   const categories = [
     { value: 'all', label: 'All Records', icon: DocumentTextIcon },
     { value: 'diagnosis', label: 'Diagnosis', icon: ChartBarIcon },
@@ -138,13 +255,24 @@ const MedicalRecords = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-8 text-white shadow-xl">
-            <h1 className="text-4xl font-bold mb-2">Medical Records</h1>
-            <p className="text-blue-100 text-lg">View and manage your health history</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold mb-2">Medical Records</h1>
+                <p className="text-blue-100 text-lg">View and manage your health history</p>
+              </div>
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center space-x-2 px-6 py-3 bg-white text-blue-600 rounded-xl hover:bg-blue-50 transition-all duration-200 transform hover:scale-105 shadow-lg font-semibold"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+                <span>Upload Document</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -197,6 +325,43 @@ const MedicalRecords = () => {
           </div>
         </div>
 
+        {/* Info Sidebar */}
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 mb-8 shadow-lg">
+          <div className="flex items-start space-x-4">
+            <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+              <DocumentTextIcon className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-gray-900 mb-3">How to Manage Your Medical Records</h3>
+              <div className="space-y-3 text-sm text-gray-700">
+                <div className="flex items-start space-x-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p><strong>Review Records:</strong> View all medical records created by doctors and hospital staff during your visits</p>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <CloudArrowUpIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p><strong>Upload Documents:</strong> Submit your own medical documents (lab results, prescriptions, etc.) for review by hospital reception</p>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p><strong>Approval Process:</strong> Uploaded documents are reviewed by hospital staff before being added to your official medical records</p>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <ArrowDownTrayIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                  <p><strong>Download:</strong> Download any medical record for your personal files or sharing with other healthcare providers</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="mt-4 w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition-colors font-semibold shadow-md"
+              >
+                <CloudArrowUpIcon className="w-5 h-5" />
+                <span>Upload Your Document</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Search and Filter */}
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-8">
           <div className="flex flex-col md:flex-row gap-4 mb-6">
@@ -228,6 +393,142 @@ const MedicalRecords = () => {
                 <span className="text-sm">{label}</span>
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Uploaded Documents Section */}
+        <div className="bg-white rounded-2xl shadow-xl mb-8">
+          <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <CloudArrowUpIcon className="w-6 h-6 text-indigo-600" />
+                <h2 className="text-xl font-bold text-gray-900">
+                  My Uploaded Documents ({uploadedDocuments.length})
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowUploadModal(true)}
+                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm font-semibold shadow-md"
+              >
+                <PlusIcon className="w-4 h-4" />
+                <span>Upload New</span>
+              </button>
+            </div>
+          </div>
+          
+          <div className="p-6">
+            {loadingDocuments ? (
+              <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                <p className="text-gray-600 mt-4">Loading documents...</p>
+              </div>
+            ) : uploadedDocuments.length > 0 ? (
+              <div className="space-y-4">
+                {uploadedDocuments.map((doc) => {
+                  const statusBadge = getStatusBadge(doc.status);
+                  const StatusIcon = statusBadge.icon;
+                  return (
+                    <div
+                      key={doc._id}
+                      className="border-2 border-gray-200 rounded-xl p-6 hover:shadow-md transition-all duration-300"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-4 flex-1">
+                          <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <DocumentTextIcon className="w-6 h-6 text-indigo-600" />
+                          </div>
+                          
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3 mb-2">
+                              <h3 className="text-lg font-semibold text-gray-900">
+                                {doc.title}
+                              </h3>
+                              <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold border ${statusBadge.color}`}>
+                                <StatusIcon className="w-4 h-4" />
+                                <span>{statusBadge.label}</span>
+                              </span>
+                            </div>
+                            
+                            {doc.description && (
+                              <p className="text-gray-600 text-sm mb-3">{doc.description}</p>
+                            )}
+                            
+                            <div className="flex flex-wrap gap-4 text-sm text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <CalendarIcon className="w-4 h-4" />
+                                <span>Uploaded: {formatDate(doc.uploadedAt || doc.createdAt)}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <DocumentTextIcon className="w-4 h-4" />
+                                <span>Type: {doc.documentType?.replace(/-/g, ' ').toUpperCase() || 'N/A'}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <span className="font-semibold">{(doc.fileSize / 1024).toFixed(1)} KB</span>
+                              </div>
+                            </div>
+
+                            {/* Status Message */}
+                            {doc.status === 'pending' && (
+                              <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                <p className="text-sm text-yellow-800">
+                                  <ClockIcon className="w-4 h-4 inline mr-1" />
+                                  This document is pending review by hospital staff. You will be notified once it's processed.
+                                </p>
+                              </div>
+                            )}
+                            {doc.status === 'approved' && (
+                              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
+                                <p className="text-sm text-green-800">
+                                  <CheckCircleIcon className="w-4 h-4 inline mr-1" />
+                                  This document has been approved and added to your official medical records.
+                                </p>
+                              </div>
+                            )}
+                            {doc.status === 'rejected' && doc.rejectionReason && (
+                              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                                <p className="text-sm text-red-800">
+                                  <XCircleIcon className="w-4 h-4 inline mr-1" />
+                                  <strong>Rejected:</strong> {doc.rejectionReason}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center space-x-2">
+                          {doc.fileUrl && (
+                            <a
+                              href={doc.fileUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="View Document"
+                            >
+                              <EyeIcon className="w-5 h-5" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <CloudArrowUpIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No Documents Uploaded Yet</h3>
+                <p className="text-gray-600 mb-4">
+                  Upload your medical documents to get them reviewed and added to your official records.
+                </p>
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="inline-flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-semibold shadow-md"
+                >
+                  <CloudArrowUpIcon className="w-5 h-5" />
+                  <span>Upload Your First Document</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -435,6 +736,172 @@ const MedicalRecords = () => {
               <button className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2">
                 <ArrowDownTrayIcon className="w-4 h-4" />
                 <span>Download</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Upload Document Modal */}
+      {showUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between rounded-t-2xl">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">Upload Medical Document</h3>
+                <p className="text-sm text-gray-600 mt-1">Documents will be reviewed by hospital reception before appearing in your records</p>
+              </div>
+              <button
+                onClick={() => setShowUploadModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Info Banner */}
+              <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                <div className="flex items-start space-x-3">
+                  <CheckCircleIcon className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-semibold text-blue-900 mb-1">Document Review Process</h4>
+                    <ul className="text-sm text-blue-800 space-y-1">
+                      <li>• Your document will be reviewed by hospital reception staff</li>
+                      <li>• Approved documents will appear in your medical records</li>
+                      <li>• You'll receive a notification once reviewed</li>
+                      <li>• Supported formats: PDF, JPEG, PNG (Max 10MB)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Document Title */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Document Title *
+                </label>
+                <input
+                  type="text"
+                  value={uploadForm.title}
+                  onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+                  placeholder="e.g., Blood Test Results - December 2024"
+                  className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              {/* Category */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Document Category *
+                </label>
+                <select
+                  value={uploadForm.category}
+                  onChange={(e) => setUploadForm({ ...uploadForm, category: e.target.value })}
+                  className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="lab-report">Lab Report</option>
+                  <option value="blood-test">Blood Test</option>
+                  <option value="x-ray">X-Ray</option>
+                  <option value="mri-scan">MRI Scan</option>
+                  <option value="ct-scan">CT Scan</option>
+                  <option value="ultrasound">Ultrasound</option>
+                  <option value="ecg">ECG</option>
+                  <option value="prescription">Prescription</option>
+                  <option value="vaccination-record">Vaccination Record</option>
+                  <option value="discharge-summary">Discharge Summary</option>
+                  <option value="medical-certificate">Medical Certificate</option>
+                  <option value="insurance-card">Insurance Card</option>
+                  <option value="id-proof">ID Proof</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Description (Optional)
+                </label>
+                <textarea
+                  value={uploadForm.description}
+                  onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                  rows={4}
+                  placeholder="Add any additional details about this document..."
+                  className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* File Upload */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Upload File *
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-500 transition-colors">
+                  <input
+                    type="file"
+                    onChange={handleFileSelect}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <CloudArrowUpIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    {uploadForm.file ? (
+                      <div>
+                        <p className="text-sm font-semibold text-green-600 mb-1">
+                          {uploadForm.file.name}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {(uploadForm.file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setUploadForm({ ...uploadForm, file: null })}
+                          className="mt-2 text-sm text-red-600 hover:text-red-700"
+                        >
+                          Remove file
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-1">
+                          <span className="text-blue-600 font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-gray-500">PDF, JPEG, PNG up to 10MB</p>
+                      </div>
+                    )}
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6 flex justify-end space-x-3 rounded-b-2xl">
+              <button
+                onClick={() => setShowUploadModal(false)}
+                disabled={uploadingDocument}
+                className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 transition-colors font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUploadDocument}
+                disabled={uploadingDocument || !uploadForm.title.trim() || !uploadForm.file}
+                className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center space-x-2 font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                {uploadingDocument ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                    <span>Uploading...</span>
+                  </>
+                ) : (
+                  <>
+                    <CloudArrowUpIcon className="w-5 h-5" />
+                    <span>Upload Document</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
