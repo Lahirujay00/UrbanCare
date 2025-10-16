@@ -53,7 +53,6 @@ const DoctorDashboardEnhanced = () => {
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },
     { id: 'appointments', name: 'Appointments', icon: CalendarIcon },
     { id: 'patients', name: 'Patients', icon: UserIcon },
-    { id: 'records', name: 'Medical Records', icon: DocumentTextIcon },
     { id: 'availability', name: 'Availability', icon: ClockIcon },
     { id: 'notifications', name: 'Notifications', icon: BellIcon }
   ];
@@ -125,27 +124,26 @@ const DoctorDashboardEnhanced = () => {
 
   const fetchPatients = async () => {
     try {
-      // Fetch all patients who have appointments with this doctor
-      const response = await appointmentAPI.getDoctorAppointments(user._id);
-      if (response.data.success) {
-        const appointments = response.data.data.appointments || [];
-        const uniquePatients = [];
-        const patientIds = new Set();
-        
-        appointments.forEach(apt => {
-          if (apt.patient && !patientIds.has(apt.patient._id)) {
-            patientIds.add(apt.patient._id);
-            uniquePatients.push(apt.patient);
-          }
-        });
-        
-        setPatients(uniquePatients);
-        setFilteredPatients(uniquePatients);
+      // Use new enhanced patient list API
+      const response = await fetch('/api/doctor/patients/list?limit=50', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        const patientList = data.data.patients || [];
+        setPatients(patientList);
+        setFilteredPatients(patientList);
         
         setStats(prevStats => ({
           ...prevStats,
-          totalPatients: uniquePatients.length,
-          newPatients: uniquePatients.filter(p => {
+          totalPatients: data.data.summary.totalPatients || patientList.length,
+          newPatients: patientList.filter(p => {
             const createdDate = new Date(p.createdAt);
             const monthAgo = new Date();
             monthAgo.setMonth(monthAgo.getMonth() - 1);
@@ -155,7 +153,7 @@ const DoctorDashboardEnhanced = () => {
       }
     } catch (error) {
       console.error('Error fetching patients:', error);
-      toast.error('Failed to load patients');
+      toast.error('Failed to fetch patients');
     }
   };
 
@@ -616,6 +614,13 @@ const DoctorDashboardEnhanced = () => {
                   <span className="text-sm text-gray-500">
                     {filteredPatients.length} patients
                   </span>
+                  <button
+                    onClick={() => navigate('/doctor/patient-records')}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+                  >
+                    <DocumentTextIcon className="w-4 h-4" />
+                    <span>View All Records</span>
+                  </button>
                 </div>
               </div>
 
@@ -660,9 +665,8 @@ const DoctorDashboardEnhanced = () => {
                       <div className="flex space-x-2">
                         <button
                           onClick={() => {
-                            setSelectedPatient(patient);
-                            fetchPatientRecords(patient._id);
-                            setActiveTab('records');
+                            // Navigate to comprehensive patient profile
+                            navigate(`/doctor/patient-records?patientId=${patient._id}`);
                           }}
                           className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
                         >
@@ -670,12 +674,13 @@ const DoctorDashboardEnhanced = () => {
                         </button>
                         <button
                           onClick={() => {
-                            // Navigate to create appointment for this patient
-                            navigate('/appointments/book', { state: { selectedPatient: patient } });
+                            // View patient profile with all details
+                            setSelectedPatient(patient);
+                            fetchPatientRecords(patient._id);
                           }}
                           className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
                         >
-                          Book Appointment
+                          Patient Details
                         </button>
                       </div>
                     </div>
