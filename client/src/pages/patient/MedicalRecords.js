@@ -77,10 +77,19 @@ const MedicalRecords = () => {
     try {
       setLoadingDocuments(true);
       const response = await documentAPI.getPatientDocuments(user._id);
-      setUploadedDocuments(response.data || []);
+      console.log('Fetched documents response:', response.data);
+      
+      if (response.data.success && response.data.data) {
+        setUploadedDocuments(response.data.data.documents || []);
+      } else {
+        setUploadedDocuments([]);
+      }
     } catch (error) {
       console.error('Error fetching uploaded documents:', error);
-      toast.error('Failed to load uploaded documents');
+      // Don't show error toast if it's just a connection issue
+      if (error.response) {
+        toast.error('Failed to load uploaded documents');
+      }
     } finally {
       setLoadingDocuments(false);
     }
