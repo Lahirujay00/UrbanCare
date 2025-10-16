@@ -147,12 +147,7 @@ const PatientRecordsList = () => {
         {/* Header with Back Button */}
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => navigate('/doctor')}
-              className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeftIcon className="w-6 h-6" />
-            </button>
+            
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Patient Records</h1>
               <p className="text-gray-600">Access and manage patient medical records</p>

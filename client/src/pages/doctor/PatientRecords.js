@@ -288,7 +288,7 @@ const PatientRecords = () => {
         <div className="mb-8 flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => navigate('/doctor')}
+              onClick={() => navigate('/doctor/patient-records')}
               className="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowLeftIcon className="w-6 h-6" />
