@@ -67,14 +67,19 @@ const AuthContext = createContext();
 // Provider component
 export const AuthProvider = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const [isChecking, setIsChecking] = React.useState(false);
 
   // Check if user is logged in on app start
   useEffect(() => {
     const checkAuth = async () => {
+      // Prevent duplicate simultaneous auth checks
+      if (isChecking) return;
+      
       const token = localStorage.getItem('token');
       
       if (token) {
         try {
+          setIsChecking(true);
           const response = await authAPI.getMe();
           if (response.data.success) {
             dispatch({
@@ -93,6 +98,8 @@ export const AuthProvider = ({ children }) => {
           localStorage.removeItem('token');
           localStorage.removeItem('refreshToken');
           dispatch({ type: 'AUTH_FAIL' });
+        } finally {
+          setIsChecking(false);
         }
       } else {
         dispatch({ type: 'SET_LOADING', payload: false });

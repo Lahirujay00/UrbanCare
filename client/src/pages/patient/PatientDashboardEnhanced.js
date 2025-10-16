@@ -45,6 +45,7 @@ const PatientDashboardEnhanced = () => {
     notifications: 0
   });
   const [activeTab, setActiveTab] = useState('overview');
+  const [isFetching, setIsFetching] = useState(false);
 
   // Tab configuration
   const tabs = [
@@ -75,8 +76,12 @@ const PatientDashboardEnhanced = () => {
   }, []);
 
   const fetchDashboardData = async () => {
+    // Prevent duplicate simultaneous calls
+    if (isFetching) return;
+    
     try {
       setLoading(true);
+      setIsFetching(true);
       
       // Fetch appointments - get all statuses to show both upcoming and history
       const appointmentsRes = await appointmentAPI.getAppointments({
@@ -128,6 +133,7 @@ const PatientDashboardEnhanced = () => {
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
+      setIsFetching(false);
     }
   };
 
