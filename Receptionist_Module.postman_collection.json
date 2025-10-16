@@ -1,0 +1,408 @@
+{
+  "info": {
+    "name": "UrbanCare - Receptionist Module",
+    "description": "API collection for testing the Smart Healthcare System Receptionist Module",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000/api/receptionist",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login Receptionist",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set('token', jsonData.data.token);",
+                  "    pm.collectionVariables.set('token', jsonData.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"kavindu@hospital.lk\",\n  \"password\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Login with receptionist credentials. Token will be automatically saved."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current Receptionist",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            },
+            "description": "Get currently logged in receptionist details."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Patient Management",
+      "item": [
+        {
+          "name": "Get Patient by Card ID - Valid",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/HC2025001",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "HC2025001"]
+            },
+            "description": "Search for patient using digital health card ID (Valid example)."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Patient by Card ID - Not Found",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/HC9999999",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "HC9999999"]
+            },
+            "description": "Test with invalid card ID to see error handling."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Patients",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients"]
+            },
+            "description": "Get list of all active patients."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Patient Contact",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactNumber\": \"+94 77 999 8888\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/update/PATIENT_ID_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "update", "PATIENT_ID_HERE"]
+            },
+            "description": "Update patient contact number. Replace PATIENT_ID_HERE with actual patient ID from search."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Visit Reason",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"visitReason\": \"Routine health checkup and consultation\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/update/PATIENT_ID_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "update", "PATIENT_ID_HERE"]
+            },
+            "description": "Update patient visit reason. Replace PATIENT_ID_HERE with actual patient ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Both Contact and Visit Reason",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contactNumber\": \"+94 71 888 7777\",\n  \"visitReason\": \"Emergency consultation for chest pain\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/update/PATIENT_ID_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "update", "PATIENT_ID_HERE"]
+            },
+            "description": "Update both contact number and visit reason simultaneously."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Activity Logs",
+      "item": [
+        {
+          "name": "Get Recent Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logs?limit=50&page=1",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                }
+              ]
+            },
+            "description": "Get recent activity logs with pagination."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logs/me?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "me"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Get activity logs for current logged in receptionist."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Patient Logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logs/patient/HC2025001?limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs", "patient", "HC2025001"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get all activity logs for a specific patient by card ID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Logs with Filters",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/logs?action=Viewed patient record&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["logs"],
+              "query": [
+                {
+                  "key": "action",
+                  "value": "Viewed patient record"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": "Get logs filtered by action type."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Error Testing",
+      "item": [
+        {
+          "name": "Login - Invalid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"kavindu@hospital.lk\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Test login with wrong password - should return 401."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Patient - No Token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/HC2025001",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "HC2025001"]
+            },
+            "description": "Test accessing protected route without token - should return 401."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Patient - Invalid Data",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"invalidField\": \"test\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/update/PATIENT_ID_HERE",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "update", "PATIENT_ID_HERE"]
+            },
+            "description": "Test update with invalid field - should return 400."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

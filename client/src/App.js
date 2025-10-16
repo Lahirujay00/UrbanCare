@@ -43,6 +43,9 @@ import UserManagement from './pages/manager/UserManagement';
 import AdminDashboard from './pages/admin/DashboardFull';
 import SystemSettings from './pages/admin/SystemSettings';
 
+// Receptionist Pages
+import ReceptionistDashboard from './pages/receptionist/Dashboard';
+
 // Shared Pages
 import AppointmentDetails from './pages/AppointmentDetails';
 
@@ -288,6 +291,11 @@ function App() {
                     <UserManagement />
                   </Layout>
                 </ProtectedRoute>
+              } />
+
+              {/* Receptionist Routes */}
+              <Route path="/receptionist/dashboard" element={
+                <ReceptionistDashboard />
               } />
 
               {/* Admin Routes */}
