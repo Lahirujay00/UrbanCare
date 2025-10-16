@@ -62,12 +62,17 @@ const AppointmentDetails = () => {
     }
 
     try {
-      await appointmentAPI.updateAppointment(id, { status: 'cancelled' });
-      toast.success('Appointment cancelled successfully');
-      fetchAppointmentDetails(); // Refresh data
+      const response = await appointmentAPI.cancelAppointment(id, 'Cancelled by patient');
+      
+      if (response.data.success) {
+        toast.success('Appointment cancelled successfully');
+        fetchAppointmentDetails(); // Refresh data to show refund button
+      } else {
+        toast.error('Failed to cancel appointment');
+      }
     } catch (error) {
       console.error('Error cancelling appointment:', error);
-      toast.error('Failed to cancel appointment');
+      toast.error(error.response?.data?.message || 'Failed to cancel appointment');
     }
   };
 
@@ -193,6 +198,23 @@ const AppointmentDetails = () => {
               </div>
             </div>
           </div>
+
+          {/* Cancellation Notice */}
+          {appointment.status === 'cancelled' && (
+            <div className="mt-4 bg-red-50 border-2 border-red-200 rounded-xl p-4">
+              <div className="flex items-start space-x-3">
+                <ExclamationTriangleIcon className="w-6 h-6 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="text-red-900 font-semibold mb-1">This appointment has been cancelled</h3>
+                  <p className="text-red-700 text-sm">
+                    {appointment.paymentStatus === 'paid' 
+                      ? 'You can request a refund using the button in the Actions section.'
+                      : 'No payment was made for this appointment.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Main Content Card Wrapper */}
@@ -343,7 +365,8 @@ const AppointmentDetails = () => {
               <h3 className="text-lg font-bold text-gray-900 mb-4">Actions</h3>
               
               <div className="space-y-3">
-                {appointment.status === 'scheduled' && user.role === 'patient' && (
+                {['scheduled', 'confirmed', 'pending-payment'].includes(appointment.status) && 
+                 user.role === 'patient' && (
                   <button
                     onClick={handleCancelAppointment}
                     className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
@@ -354,7 +377,7 @@ const AppointmentDetails = () => {
                 )}
                 
                 {appointment.paymentStatus === 'paid' && 
-                 ['scheduled', 'confirmed'].includes(appointment.status) && 
+                 ['scheduled', 'confirmed', 'cancelled'].includes(appointment.status) && 
                  user.role === 'patient' && (
                   <button
                     onClick={() => setShowRefundModal(true)}

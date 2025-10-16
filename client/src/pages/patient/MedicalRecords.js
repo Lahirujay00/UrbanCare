@@ -77,10 +77,19 @@ const MedicalRecords = () => {
     try {
       setLoadingDocuments(true);
       const response = await documentAPI.getPatientDocuments(user._id);
-      setUploadedDocuments(response.data || []);
+      console.log('Fetched documents response:', response.data);
+      
+      if (response.data.success && response.data.data) {
+        setUploadedDocuments(response.data.data.documents || []);
+      } else {
+        setUploadedDocuments([]);
+      }
     } catch (error) {
       console.error('Error fetching uploaded documents:', error);
-      toast.error('Failed to load uploaded documents');
+      // Don't show error toast if it's just a connection issue
+      if (error.response) {
+        toast.error('Failed to load uploaded documents');
+      }
     } finally {
       setLoadingDocuments(false);
     }
@@ -131,13 +140,13 @@ const MedicalRecords = () => {
       formData.append('documentType', uploadForm.category);
       formData.append('category', uploadForm.category);
       formData.append('uploadedBy', 'patient');
-      formData.append('status', 'pending'); // Pending review by hospital reception
+      formData.append('status', 'approved'); // Auto-approved for patient uploads
       
       // Upload document to server
       const response = await documentAPI.uploadDocument(formData);
       
       if (response.data.success) {
-        toast.success('Document uploaded successfully! Pending review by hospital reception.');
+        toast.success('Document uploaded successfully!');
         setShowUploadModal(false);
         setUploadForm({
           title: '',
@@ -220,27 +229,6 @@ const MedicalRecords = () => {
       'low': 'bg-gray-100 text-gray-700'
     };
     return badges[priority] || badges.normal;
-  };
-
-  const getStatusBadge = (status) => {
-    const badges = {
-      'pending': {
-        color: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-        icon: ClockIcon,
-        label: 'Pending Review'
-      },
-      'approved': {
-        color: 'bg-green-100 text-green-700 border-green-200',
-        icon: CheckCircleIcon,
-        label: 'Approved'
-      },
-      'rejected': {
-        color: 'bg-red-100 text-red-700 border-red-200',
-        icon: XCircleIcon,
-        label: 'Rejected'
-      }
-    };
-    return badges[status] || badges.pending;
   };
 
   const categories = [
@@ -340,11 +328,7 @@ const MedicalRecords = () => {
                 </div>
                 <div className="flex items-start space-x-2">
                   <CloudArrowUpIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <p><strong>Upload Documents:</strong> Submit your own medical documents (lab results, prescriptions, etc.) for review by hospital reception</p>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                  <p><strong>Approval Process:</strong> Uploaded documents are reviewed by hospital staff before being added to your official medical records</p>
+                  <p><strong>Upload Documents:</strong> Add your own medical documents (lab results, prescriptions, imaging, etc.) to your records</p>
                 </div>
                 <div className="flex items-start space-x-2">
                   <ArrowDownTrayIcon className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -425,8 +409,6 @@ const MedicalRecords = () => {
             ) : uploadedDocuments.length > 0 ? (
               <div className="space-y-4">
                 {uploadedDocuments.map((doc) => {
-                  const statusBadge = getStatusBadge(doc.status);
-                  const StatusIcon = statusBadge.icon;
                   return (
                     <div
                       key={doc._id}
@@ -443,10 +425,6 @@ const MedicalRecords = () => {
                               <h3 className="text-lg font-semibold text-gray-900">
                                 {doc.title}
                               </h3>
-                              <span className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-semibold border ${statusBadge.color}`}>
-                                <StatusIcon className="w-4 h-4" />
-                                <span>{statusBadge.label}</span>
-                              </span>
                             </div>
                             
                             {doc.description && (
@@ -466,32 +444,6 @@ const MedicalRecords = () => {
                                 <span className="font-semibold">{(doc.fileSize / 1024).toFixed(1)} KB</span>
                               </div>
                             </div>
-
-                            {/* Status Message */}
-                            {doc.status === 'pending' && (
-                              <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-                                <p className="text-sm text-yellow-800">
-                                  <ClockIcon className="w-4 h-4 inline mr-1" />
-                                  This document is pending review by hospital staff. You will be notified once it's processed.
-                                </p>
-                              </div>
-                            )}
-                            {doc.status === 'approved' && (
-                              <div className="mt-3 bg-green-50 border border-green-200 rounded-lg p-3">
-                                <p className="text-sm text-green-800">
-                                  <CheckCircleIcon className="w-4 h-4 inline mr-1" />
-                                  This document has been approved and added to your official medical records.
-                                </p>
-                              </div>
-                            )}
-                            {doc.status === 'rejected' && doc.rejectionReason && (
-                              <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
-                                <p className="text-sm text-red-800">
-                                  <XCircleIcon className="w-4 h-4 inline mr-1" />
-                                  <strong>Rejected:</strong> {doc.rejectionReason}
-                                </p>
-                              </div>
-                            )}
                           </div>
                         </div>
                         

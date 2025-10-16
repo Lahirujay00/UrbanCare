@@ -13,7 +13,9 @@ import {
   ExclamationCircleIcon,
   QrCodeIcon,
   CloudArrowUpIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  UserCircleIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -24,6 +26,7 @@ import RefundManager from '../../components/Refunds/RefundManager';
 import ChatBot from '../../components/ChatBot/ChatBot';
 import AppointmentBooking from './AppointmentBooking';
 import MedicalRecords from './MedicalRecords';
+import ProfileEditor from './ProfileEditor';
 import toast from 'react-hot-toast';
 
 const PatientDashboardEnhanced = () => {
@@ -47,9 +50,10 @@ const PatientDashboardEnhanced = () => {
   const tabs = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },
     { id: 'book-appointment', name: 'Book Appointment', icon: CalendarIcon },
+    { id: 'appointments', name: 'My Appointments', icon: ClockIcon },
     { id: 'health-card', name: 'Health Card', icon: QrCodeIcon },
     { id: 'documents', name: 'Medical Records', icon: DocumentTextIcon },
-    { id: 'refunds', name: 'Refunds', icon: CurrencyDollarIcon }
+    { id: 'profile', name: 'Profile & Verification', icon: UserCircleIcon }
   ];
 
   // Handle URL parameters for tab navigation
@@ -58,6 +62,10 @@ const PatientDashboardEnhanced = () => {
     const tabParam = urlParams.get('tab');
     if (tabParam && tabs.some(tab => tab.id === tabParam)) {
       setActiveTab(tabParam);
+    }
+    // Refresh data when navigating to overview from payment
+    if (tabParam === 'overview' || !tabParam) {
+      fetchDashboardData();
     }
   }, [location.search]);
 
@@ -70,19 +78,27 @@ const PatientDashboardEnhanced = () => {
     try {
       setLoading(true);
       
-      // Fetch appointments
+      // Fetch appointments - get all statuses to show both upcoming and history
       const appointmentsRes = await appointmentAPI.getAppointments({
-        status: 'scheduled,confirmed'
+        status: 'pending-payment,scheduled,confirmed,cancelled,completed,no-show'
       });
       
       if (appointmentsRes.data.success) {
-        const upcomingAppts = appointmentsRes.data.data.appointments || [];
-        setAppointments(upcomingAppts);
+        const allAppts = appointmentsRes.data.data.appointments || [];
+        setAppointments(allAppts);
         
-        // Update stats
+        console.log('All appointments:', allAppts);
+        console.log('Cancelled appointments:', allAppts.filter(apt => apt.status === 'cancelled'));
+        
+        // Update stats - count only active upcoming appointments
+        const activeUpcoming = allAppts.filter(apt => 
+          new Date(apt.appointmentDate) >= new Date() && 
+          !['cancelled', 'completed', 'no-show'].includes(apt.status)
+        ).length;
+        
         setStats(prev => ({
           ...prev,
-          upcomingAppointments: upcomingAppts.length
+          upcomingAppointments: activeUpcoming
         }));
       }
 
@@ -248,12 +264,12 @@ const PatientDashboardEnhanced = () => {
               <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-3xl font-bold text-gray-900 mb-1">0</p>
-                    <p className="text-gray-600 text-sm font-medium">Pending Refunds</p>
-                    <p className="text-xs text-orange-600 mt-1">All processed</p>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">{user?.isVerified ? 'Verified' : 'Pending'}</p>
+                    <p className="text-gray-600 text-sm font-medium">Identity Status</p>
+                    <p className="text-xs text-orange-600 mt-1">{user?.isVerified ? 'Account verified' : 'Verification needed'}</p>
                   </div>
                   <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <CurrencyDollarIcon className="w-8 h-8 text-white" />
+                    <ShieldCheckIcon className="w-8 h-8 text-white" />
                   </div>
                 </div>
               </div>
@@ -281,9 +297,9 @@ const PatientDashboardEnhanced = () => {
                 </div>
               </div>
               <div className="p-6">
-                {appointments.length > 0 ? (
+                {appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).length > 0 ? (
                   <div className="space-y-4">
-                    {appointments.slice(0, 3).map((appointment) => (
+                    {appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).slice(0, 2).map((appointment) => (
                       <div
                         key={appointment._id}
                         className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-6 rounded-2xl hover:shadow-lg transition-all duration-300"
@@ -341,6 +357,18 @@ const PatientDashboardEnhanced = () => {
                         </div>
                       </div>
                     ))}
+                    {appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).length > 2 && (
+                      <div className="text-center pt-4">
+                        <button
+                          onClick={() => setActiveTab('appointments')}
+                          className="inline-flex items-center space-x-2 px-6 py-3 bg-white text-blue-600 border-2 border-blue-200 rounded-xl hover:bg-blue-50 transition-colors font-medium"
+                        >
+                          <ClockIcon className="w-5 h-5" />
+                          <span>View All Appointments ({appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).length})</span>
+                          <ArrowRightIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-12">
@@ -392,16 +420,16 @@ const PatientDashboardEnhanced = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('refunds')}
+                onClick={() => setActiveTab('profile')}
                 className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-left"
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-                    <CurrencyDollarIcon className="w-6 h-6 text-white" />
+                    <UserCircleIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">Request Refunds</h3>
-                    <p className="text-sm text-gray-600">Manage appointment refunds</p>
+                    <h3 className="font-bold text-gray-900">Update Profile</h3>
+                    <p className="text-sm text-gray-600">Manage personal info & verification</p>
                   </div>
                 </div>
               </button>
@@ -416,6 +444,178 @@ const PatientDashboardEnhanced = () => {
           </div>
         )}
 
+        {/* My Appointments Tab */}
+        {activeTab === 'appointments' && (
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-600 to-indigo-600">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <ClockIcon className="w-6 h-6 text-white" />
+                  <h2 className="text-2xl font-bold text-white">
+                    My Appointments
+                  </h2>
+                </div>
+              </div>
+            </div>
+            
+            <div className="p-6">
+              {loading ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                  <p className="text-gray-600 mt-4">Loading appointments...</p>
+                </div>
+              ) : (
+                <>
+                  {/* Upcoming Appointments */}
+                  <div className="mb-8">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+                      <CalendarIcon className="w-5 h-5 text-blue-600" />
+                      <span>Upcoming Appointments</span>
+                    </h3>
+                    {appointments.filter(apt => 
+                      new Date(apt.appointmentDate) >= new Date() && 
+                      !['cancelled', 'completed', 'no-show'].includes(apt.status)
+                    ).length > 0 ? (
+                      <div className="space-y-4">
+                        {appointments.filter(apt => 
+                          new Date(apt.appointmentDate) >= new Date() && 
+                          !['cancelled', 'completed', 'no-show'].includes(apt.status)
+                        ).map((appointment) => (
+                          <div
+                            key={appointment._id}
+                            className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-100 p-6 rounded-2xl hover:shadow-lg transition-all duration-300"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4 flex-1">
+                                <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                                  <UserIcon className="w-7 h-7 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-lg font-bold text-gray-900 mb-1">
+                                    Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                                  </h4>
+                                  <p className="text-sm text-blue-700 font-medium mb-2">
+                                    {appointment.doctor?.specialization} • {appointment.appointmentType}
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex items-center space-x-1">
+                                      <CalendarIcon className="w-4 h-4 text-gray-500" />
+                                      <span className="text-sm text-gray-600 font-medium">{formatDate(appointment.appointmentDate)}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                      <ClockIcon className="w-4 h-4 text-gray-500" />
+                                      <span className="text-sm text-gray-600 font-medium">{appointment.appointmentTime}</span>
+                                    </div>
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                      appointment.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                                      appointment.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                                      appointment.status === 'pending-payment' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {appointment.status}
+                                    </span>
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                      appointment.paymentStatus === 'paid' ? 'bg-green-100 text-green-800' :
+                                      appointment.paymentStatus === 'pay-at-hospital' ? 'bg-yellow-100 text-yellow-800' :
+                                      'bg-orange-100 text-orange-800'
+                                    }`}>
+                                      {appointment.paymentStatus === 'pay-at-hospital' ? 'Pay at Hospital' : appointment.paymentStatus}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => navigate(`/appointments/${appointment._id}`)}
+                                className="px-5 py-2.5 bg-white text-blue-600 border-2 border-blue-200 rounded-xl hover:bg-blue-50 transition-colors font-semibold shadow-sm"
+                              >
+                                View
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 bg-gray-50 rounded-2xl">
+                        <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-600">No upcoming appointments</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Past Appointments (History) */}
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center space-x-2">
+                      <ClockIcon className="w-5 h-5 text-gray-600" />
+                      <span>Appointment History</span>
+                    </h3>
+                    {appointments.filter(apt => 
+                      new Date(apt.appointmentDate) < new Date() || 
+                      ['cancelled', 'completed', 'no-show'].includes(apt.status)
+                    ).length > 0 ? (
+                      <div className="space-y-4">
+                        {appointments.filter(apt => 
+                          new Date(apt.appointmentDate) < new Date() || 
+                          ['cancelled', 'completed', 'no-show'].includes(apt.status)
+                        ).map((appointment) => (
+                          <div
+                            key={appointment._id}
+                            className="bg-gray-50 border border-gray-200 p-6 rounded-2xl hover:shadow-md transition-all duration-300"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center space-x-4 flex-1">
+                                <div className="w-14 h-14 bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                                  <UserIcon className="w-7 h-7 text-white" />
+                                </div>
+                                <div className="flex-1">
+                                  <h4 className="text-lg font-bold text-gray-900 mb-1">
+                                    Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
+                                  </h4>
+                                  <p className="text-sm text-gray-700 font-medium mb-2">
+                                    {appointment.doctor?.specialization} • {appointment.appointmentType}
+                                  </p>
+                                  <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex items-center space-x-1">
+                                      <CalendarIcon className="w-4 h-4 text-gray-500" />
+                                      <span className="text-sm text-gray-600 font-medium">{formatDate(appointment.appointmentDate)}</span>
+                                    </div>
+                                    <div className="flex items-center space-x-1">
+                                      <ClockIcon className="w-4 h-4 text-gray-500" />
+                                      <span className="text-sm text-gray-600 font-medium">{appointment.appointmentTime}</span>
+                                    </div>
+                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                      appointment.status === 'completed' ? 'bg-green-100 text-green-800' :
+                                      appointment.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                                      appointment.status === 'no-show' ? 'bg-orange-100 text-orange-800' :
+                                      'bg-gray-100 text-gray-800'
+                                    }`}>
+                                      {appointment.status}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => navigate(`/appointments/${appointment._id}`)}
+                                className="px-5 py-2.5 bg-white text-gray-600 border-2 border-gray-200 rounded-xl hover:bg-gray-50 transition-colors font-semibold shadow-sm"
+                              >
+                                View
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 bg-gray-50 rounded-2xl">
+                        <ClockIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-600">No past appointments</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Health Card Tab */}
         {activeTab === 'health-card' && <HealthCardDisplay />}
 
@@ -426,8 +626,12 @@ const PatientDashboardEnhanced = () => {
           </div>
         )}
 
-        {/* Refunds Tab */}
-        {activeTab === 'refunds' && <RefundManager />}
+        {/* Profile & Verification Tab */}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
+            <ProfileEditor />
+          </div>
+        )}
       </div>
 
       {/* ChatBot Component */}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { 
   Bars3Icon, 
@@ -12,6 +12,7 @@ import {
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -39,32 +40,40 @@ const Navbar = () => {
   ];
 
   const patientLinks = [
+    { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/dashboard' },
-    { name: 'Book Appointment', href: '/dashboard?tab=book-appointment' },
-    { name: 'Medical Records', href: '/dashboard?tab=documents' },
-    { name: 'Health Card', href: '/dashboard?tab=health-card' },
+    { name: 'About', href: '/about' },
+    { name: 'Contact', href: '/contact' },
   ];
 
   const doctorLinks = [
+    { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/doctor/dashboard' },
     { name: 'Appointments', href: '/doctor/appointments' },
     { name: 'Patient Records', href: '/doctor/patient-records' },
+    { name: 'About', href: '/about' },
   ];
 
   const staffLinks = [
+    { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/staff/dashboard' },
     { name: 'Patient Verification', href: '/staff/patient-verification' },
+    { name: 'About', href: '/about' },
   ];
 
   const managerLinks = [
+    { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/manager/dashboard' },
     { name: 'Reports', href: '/manager/reports' },
     { name: 'User Management', href: '/manager/users' },
+    { name: 'About', href: '/about' },
   ];
 
   const adminLinks = [
+    { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/admin/dashboard' },
     { name: 'System Settings', href: '/admin/settings' },
+    { name: 'About', href: '/about' },
   ];
 
   const getNavigationLinks = () => {
@@ -94,15 +103,23 @@ const Navbar = () => {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {navigationLinks.map((link) => (
-              <Link
-                key={link.name}
-                to={link.href}
-                className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
-              >
-                {link.name}
-              </Link>
-            ))}
+            {navigationLinks.map((link) => {
+              const isActive = location.pathname === link.href || 
+                              (link.href === '/dashboard' && location.pathname.startsWith('/dashboard'));
+              return (
+                <Link
+                  key={link.name}
+                  to={link.href}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+                    isActive
+                      ? 'text-blue-600 bg-blue-50 font-semibold'
+                      : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                  }`}
+                >
+                  {link.name}
+                </Link>
+              );
+            })}
           </div>
 
           {/* User Menu / Auth Buttons */}
@@ -191,16 +208,24 @@ const Navbar = () => {
         {isMenuOpen && (
           <div className="md:hidden">
             <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 border-t border-gray-200">
-              {navigationLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  to={link.href}
-                  className="text-gray-700 hover:text-blue-600 block px-3 py-2 rounded-md text-base font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {link.name}
-                </Link>
-              ))}
+              {navigationLinks.map((link) => {
+                const isActive = location.pathname === link.href || 
+                                (link.href === '/dashboard' && location.pathname.startsWith('/dashboard'));
+                return (
+                  <Link
+                    key={link.name}
+                    to={link.href}
+                    className={`block px-3 py-2 rounded-md text-base font-medium transition-all duration-200 ${
+                      isActive
+                        ? 'text-blue-600 bg-blue-50 font-semibold'
+                        : 'text-gray-700 hover:text-blue-600 hover:bg-gray-50'
+                    }`}
+                    onClick={() => setIsMenuOpen(false)}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
               
               {user ? (
                 <div className="border-t border-gray-200 pt-4">

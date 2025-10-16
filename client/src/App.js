@@ -12,6 +12,8 @@ import LoadingSpinner from './components/ui/LoadingSpinner';
 
 // Pages
 import Home from './pages/Home';
+import About from './pages/About';
+import Contact from './pages/Contact';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
@@ -121,6 +123,18 @@ function App() {
               <Route path="/" element={
                 <Layout>
                   <Home />
+                </Layout>
+              } />
+              
+              <Route path="/about" element={
+                <Layout>
+                  <About />
+                </Layout>
+              } />
+              
+              <Route path="/contact" element={
+                <Layout>
+                  <Contact />
                 </Layout>
               } />
               
