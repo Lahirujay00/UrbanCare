@@ -75,7 +75,7 @@ const Appointments = () => {
       case 'scheduled': return 'bg-blue-100 text-blue-800';
       case 'pending': return 'bg-yellow-100 text-yellow-800';
       case 'cancelled': return 'bg-red-100 text-red-800';
-      case 'completed': return 'bg-gray-100 text-gray-800';
+      case 'completed': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
     }
   };
@@ -369,18 +369,30 @@ const Appointments = () => {
                           
                           {appointment.status !== 'completed' && appointment.status !== 'cancelled' && (
                             <>
-                              <button
-                                onClick={() => handleStatusChange(appointment._id, 'confirmed')}
-                                className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                                title="Confirm"
-                              >
-                                <CheckCircleIcon className="w-5 h-5" />
-                              </button>
+                              {appointment.status !== 'confirmed' && (
+                                <button
+                                  onClick={() => handleStatusChange(appointment._id, 'confirmed')}
+                                  className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                                  title="Confirm Appointment"
+                                >
+                                  <CheckCircleIcon className="w-5 h-5" />
+                                </button>
+                              )}
+                              
+                              {appointment.status === 'confirmed' && (
+                                <button
+                                  onClick={() => handleStatusChange(appointment._id, 'completed')}
+                                  className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                                  title="Mark as Completed"
+                                >
+                                  <CheckCircleIcon className="w-5 h-5" />
+                                </button>
+                              )}
                               
                               <button
                                 onClick={() => handleStatusChange(appointment._id, 'cancelled')}
                                 className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                                title="Cancel"
+                                title="Cancel Appointment"
                               >
                                 <XCircleIcon className="w-5 h-5" />
                               </button>
@@ -684,10 +696,10 @@ const Appointments = () => {
               <div className="text-sm text-gray-600">In Progress</div>
             </div>
             <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 text-center">
-              <div className="text-2xl font-bold text-red-600 mb-1">
-                {filteredAppointments.filter(apt => apt.status === 'urgent').length}
+              <div className="text-2xl font-bold text-purple-600 mb-1">
+                {filteredAppointments.filter(apt => apt.status === 'completed').length}
               </div>
-              <div className="text-sm text-gray-600">Urgent</div>
+              <div className="text-sm text-gray-600">Completed</div>
             </div>
           </div>
         )}
