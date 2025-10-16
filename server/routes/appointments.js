@@ -341,7 +341,7 @@ router.delete('/:id', auth, async (req, res) => {
       });
     }
 
-    // Update appointment status
+    // Update appointment status to cancelled
     appointment.status = 'cancelled';
     appointment.cancellation = {
       cancelledBy: req.user.id,
@@ -351,15 +351,12 @@ router.delete('/:id', auth, async (req, res) => {
 
     await appointment.save();
 
-    // If payment was made, process refund
-    if (appointment.paymentStatus === 'paid') {
-      appointment.paymentStatus = 'refunded';
-      // Note: Actual refund processing would be handled by payment service
-    }
+    // Note: Payment status remains 'paid' if payment was made
+    // User can request refund separately through refund request flow
 
     await appointment.populate([
-      { path: 'patient', select: 'firstName lastName email phone' },
-      { path: 'doctor', select: 'firstName lastName specialization department' }
+      { path: 'patient', select: 'firstName lastName email phone digitalHealthCardId' },
+      { path: 'doctor', select: 'firstName lastName specialization department consultationFee' }
     ]);
 
     res.json({
