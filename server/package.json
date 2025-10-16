@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:doctor": "jest tests/doctor.test.js",
     "setup-admin": "node scripts/setupAdmin.js",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix"

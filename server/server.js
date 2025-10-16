@@ -23,6 +23,7 @@ const healthCardRoutes = require('./routes/healthCards');
 const documentRoutes = require('./routes/documents');
 const refundRoutes = require('./routes/refunds');
 const chatbotRoutes = require('./routes/chatbot');
+const doctorRoutes = require('./routes/doctor');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -167,6 +168,7 @@ app.use('/api/health-cards', healthCardRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/refunds', refundRoutes);
 app.use('/api/chatbot', chatbotRoutes);
+app.use('/api/doctor', doctorRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

@@ -31,51 +31,29 @@ const DoctorDashboardEnhanced = () => {
   const [todayAppointments, setTodayAppointments] = useState([]);
   const [upcomingAppointments, setUpcomingAppointments] = useState([]);
   const [allAppointments, setAllAppointments] = useState([]);
-  const [patients, setPatients] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientRecords, setPatientRecords] = useState([]);
   const [availability, setAvailability] = useState({});
   const [notifications, setNotifications] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filteredPatients, setFilteredPatients] = useState([]);
   const [stats, setStats] = useState({
     today: 0,
     pending: 0,
     completed: 0,
     total: 0,
     thisWeek: 0,
-    thisMonth: 0,
-    totalPatients: 0,
-    newPatients: 0
+    thisMonth: 0
   });
 
   const tabs = [
     { id: 'overview', name: 'Overview', icon: ChartBarIcon },
-    { id: 'appointments', name: 'Appointments', icon: CalendarIcon },
-    { id: 'patients', name: 'Patients', icon: UserIcon },
-    { id: 'records', name: 'Medical Records', icon: DocumentTextIcon },
     { id: 'availability', name: 'Availability', icon: ClockIcon },
     { id: 'notifications', name: 'Notifications', icon: BellIcon }
   ];
 
   useEffect(() => {
     fetchDoctorData();
-    fetchPatients();
     fetchAvailability();
   }, []);
-
-  useEffect(() => {
-    if (searchQuery.trim()) {
-      const filtered = patients.filter(patient => 
-        `${patient.firstName} ${patient.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        patient.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        patient.phone.includes(searchQuery)
-      );
-      setFilteredPatients(filtered);
-    } else {
-      setFilteredPatients(patients);
-    }
-  }, [searchQuery, patients]);
 
   const fetchDoctorData = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -123,41 +101,7 @@ const DoctorDashboardEnhanced = () => {
     }
   };
 
-  const fetchPatients = async () => {
-    try {
-      // Fetch all patients who have appointments with this doctor
-      const response = await appointmentAPI.getDoctorAppointments(user._id);
-      if (response.data.success) {
-        const appointments = response.data.data.appointments || [];
-        const uniquePatients = [];
-        const patientIds = new Set();
-        
-        appointments.forEach(apt => {
-          if (apt.patient && !patientIds.has(apt.patient._id)) {
-            patientIds.add(apt.patient._id);
-            uniquePatients.push(apt.patient);
-          }
-        });
-        
-        setPatients(uniquePatients);
-        setFilteredPatients(uniquePatients);
-        
-        setStats(prevStats => ({
-          ...prevStats,
-          totalPatients: uniquePatients.length,
-          newPatients: uniquePatients.filter(p => {
-            const createdDate = new Date(p.createdAt);
-            const monthAgo = new Date();
-            monthAgo.setMonth(monthAgo.getMonth() - 1);
-            return createdDate > monthAgo;
-          }).length
-        }));
-      }
-    } catch (error) {
-      console.error('Error fetching patients:', error);
-      toast.error('Failed to load patients');
-    }
-  };
+
 
   const fetchPatientRecords = async (patientId) => {
     try {
@@ -390,7 +334,15 @@ const DoctorDashboardEnhanced = () => {
               <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Today's Schedule</h2>
-                  <span className="text-sm text-gray-500">{todayAppointments.length} appointments</span>
+                  <div className="flex items-center space-x-3">
+                    <span className="text-sm text-gray-500">{todayAppointments.length} appointments</span>
+                    <button
+                      onClick={() => navigate('/doctor/appointments')}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    >
+                      View All Appointments
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -456,10 +408,10 @@ const DoctorDashboardEnhanced = () => {
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-xl font-bold text-gray-900">Upcoming Appointments</h2>
                   <button
-                    onClick={() => setActiveTab('appointments')}
-                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                    onClick={() => navigate('/doctor/patient-records')}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                   >
-                    View All
+                    View Patient Records
                   </button>
                 </div>
                 
@@ -494,203 +446,7 @@ const DoctorDashboardEnhanced = () => {
           </div>
         )}
 
-        {/* Appointments Tab */}
-        {activeTab === 'appointments' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">All Appointments</h2>
-                <div className="flex space-x-2">
-                  <select className="px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                    <option value="all">All Status</option>
-                    <option value="scheduled">Scheduled</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                  <button
-                    onClick={() => fetchDoctorData()}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <ArrowPathIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {allAppointments.length > 0 ? (
-                  allAppointments.map((appointment) => (
-                    <div key={appointment._id} className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                            <UserIcon className="w-6 h-6 text-blue-600" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {appointment.patient?.firstName} {appointment.patient?.lastName}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {new Date(appointment.appointmentDate).toLocaleDateString()} at {formatTime(appointment.appointmentTime)}
-                            </p>
-                            <p className="text-xs text-gray-400">{appointment.appointmentType}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(appointment.status)}`}>
-                            {appointment.status}
-                          </span>
-                          <div className="flex space-x-1">
-                            {appointment.status === 'scheduled' && (
-                              <button
-                                onClick={() => updateAppointmentStatus(appointment._id, 'confirmed')}
-                                className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
-                                title="Confirm Appointment"
-                              >
-                                <CheckCircleIcon className="w-4 h-4" />
-                              </button>
-                            )}
-                            {appointment.status !== 'completed' && (
-                              <button
-                                onClick={() => updateAppointmentStatus(appointment._id, 'completed')}
-                                className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                                title="Mark as Completed"
-                              >
-                                <DocumentTextIcon className="w-4 h-4" />
-                              </button>
-                            )}
-                            <button
-                              onClick={() => {
-                                setSelectedPatient(appointment.patient);
-                                fetchPatientRecords(appointment.patient._id);
-                                setActiveTab('records');
-                              }}
-                              className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
-                              title="View Patient Records"
-                            >
-                              <EyeIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      {appointment.chiefComplaint && (
-                        <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                          <p className="text-sm text-gray-700">
-                            <strong>Chief Complaint:</strong> {appointment.chiefComplaint}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12">
-                    <CalendarIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-lg">No appointments found</p>
-                    <p className="text-gray-400">Appointments will appear here once scheduled</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Patients Tab */}
-        {activeTab === 'patients' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-gray-900">Patient Management</h2>
-                <div className="flex items-center space-x-4">
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search patients..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center">
-                      <UserIcon className="w-5 h-5 text-gray-400" />
-                    </div>
-                  </div>
-                  <span className="text-sm text-gray-500">
-                    {filteredPatients.length} patients
-                  </span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredPatients.length > 0 ? (
-                  filteredPatients.map((patient) => (
-                    <div key={patient._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                          <span className="text-white font-semibold">
-                            {patient.firstName?.charAt(0)}{patient.lastName?.charAt(0)}
-                          </span>
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">
-                            {patient.firstName} {patient.lastName}
-                          </h3>
-                          <p className="text-sm text-gray-500">{patient.email}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="space-y-2 text-sm text-gray-600 mb-4">
-                        <div className="flex justify-between">
-                          <span>Phone:</span>
-                          <span>{patient.phone || 'N/A'}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Age:</span>
-                          <span>
-                            {patient.dateOfBirth 
-                              ? new Date().getFullYear() - new Date(patient.dateOfBirth).getFullYear()
-                              : 'N/A'
-                            }
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Gender:</span>
-                          <span className="capitalize">{patient.gender || 'N/A'}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => {
-                            setSelectedPatient(patient);
-                            fetchPatientRecords(patient._id);
-                            setActiveTab('records');
-                          }}
-                          className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          View Records
-                        </button>
-                        <button
-                          onClick={() => {
-                            // Navigate to create appointment for this patient
-                            navigate('/appointments/book', { state: { selectedPatient: patient } });
-                          }}
-                          className="flex-1 px-3 py-2 border border-gray-300 text-gray-700 text-sm rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          Book Appointment
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-12">
-                    <UserIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-lg">No patients found</p>
-                    <p className="text-gray-400">Patients will appear here after appointments</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Medical Records Tab */}
         {activeTab === 'records' && (
@@ -721,10 +477,10 @@ const DoctorDashboardEnhanced = () => {
                       </div>
                     </div>
                     <button
-                      onClick={() => setActiveTab('patients')}
+                      onClick={() => navigate('/doctor/patient-records')}
                       className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                     >
-                      ← Back to Patients
+                      ← Back to Patient Records
                     </button>
                   </div>
                 </div>
@@ -826,10 +582,10 @@ const DoctorDashboardEnhanced = () => {
                 <UserIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-500 text-lg">Select a patient to view medical records</p>
                 <button
-                  onClick={() => setActiveTab('patients')}
+                  onClick={() => navigate('/doctor/patient-records')}
                   className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Go to Patients
+                  Go to Patient Records
                 </button>
               </div>
             )}

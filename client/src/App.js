@@ -27,7 +27,7 @@ import ProfileEditor from './pages/patient/ProfileEditor';
 
 // Doctor Pages
 import DoctorDashboard from './pages/doctor/DoctorDashboardEnhanced';
-import PatientRecords from './pages/doctor/PatientRecords';
+import PatientRecordsRouter from './pages/doctor/PatientRecordsRouter';
 import Appointments from './pages/doctor/Appointments';
 import AvailabilityManagement from './pages/doctor/AvailabilityManagement';
 import DoctorProfileEditor from './pages/doctor/ProfileEditor';
@@ -241,7 +241,7 @@ function App() {
               <Route path="/doctor/patient-records" element={
                 <ProtectedRoute allowedRoles={['doctor']}>
                   <Layout>
-                    <PatientRecords />
+                    <PatientRecordsRouter />
                   </Layout>
                 </ProtectedRoute>
               } />
