@@ -264,12 +264,6 @@ const AppointmentBooking = () => {
   };
 
   const handleTimeSelect = async (time) => {
-    // Check if patient already has an existing appointment
-    if (existingAppointment) {
-      toast.error(`You already have an appointment scheduled for ${new Date(existingAppointment.appointmentDate).toLocaleDateString()} at ${existingAppointment.appointmentTime}. Please cancel it first to book a new one.`);
-      return;
-    }
-
     // Release any previously reserved slot
     if (reservedSlot && reservedSlot !== time) {
       releaseSlot();
@@ -388,7 +382,7 @@ const AppointmentBooking = () => {
         toast.success('Payment successful! Appointment confirmed!');
         
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/dashboard?tab=overview', { replace: true });
         }, 2000);
       }
     } catch (error) {
@@ -415,7 +409,7 @@ const AppointmentBooking = () => {
         toast.success('Appointment scheduled! Pay when you arrive at the hospital.');
         
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/dashboard?tab=overview', { replace: true });
         }, 2000);
       }
     } catch (error) {
@@ -638,17 +632,6 @@ const AppointmentBooking = () => {
                   </div>
                 ) : availableSlots.length > 0 ? (
                   <>
-                    {/* Existing Appointment Warning */}
-                    {existingAppointment && (
-                      <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-xs text-red-700">
-                          <ExclamationTriangleIcon className="w-4 h-4 inline mr-1" />
-                          You already have an appointment on <strong>{new Date(existingAppointment.appointmentDate).toLocaleDateString()}</strong> at <strong>{existingAppointment.appointmentTime}</strong>. 
-                          Please cancel it first to book a new appointment.
-                        </p>
-                      </div>
-                    )}
-
                     {/* Slot Reservation Timer */}
                     {reservedSlot && slotReservationTime > 0 && (
                       <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -664,7 +647,7 @@ const AppointmentBooking = () => {
                       <p className="text-xs text-blue-700">
                         <ClockIcon className="w-4 h-4 inline mr-1" />
                         Each appointment slot is <strong>15 minutes</strong>. Select your preferred time.
-                        {!existingAppointment && <span className="block mt-1">🔒 Slots are reserved for 10 minutes after selection.</span>}
+                        <span className="block mt-1">🔒 Slots are reserved for 10 minutes after selection.</span>
                       </p>
                     </div>
                     <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 max-h-96 overflow-y-auto p-2">
@@ -672,7 +655,7 @@ const AppointmentBooking = () => {
                         const isSelected = selectedTime === slot;
                         const isReserved = reservedSlot === slot;
                         const isLocked = lockedSlots.includes(slot);
-                        const isDisabled = existingAppointment || isLocked;
+                        const isDisabled = isLocked;
                         
                         return (
                           <button

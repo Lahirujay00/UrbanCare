@@ -69,20 +69,20 @@ const ProfileEditor = () => {
           zipCode: '',
           country: ''
         },
-        medicalInfo: user.medicalInfo || {
-          bloodType: '',
-          allergies: [],
-          chronicConditions: [],
-          currentMedications: [],
+        medicalInfo: {
+          bloodType: user.medicalInfo?.bloodType || '',
+          allergies: user.medicalInfo?.allergies || [],
+          chronicConditions: user.medicalInfo?.chronicConditions || [],
+          currentMedications: user.medicalInfo?.currentMedications || [],
           emergencyContact: {
-            name: '',
-            relationship: '',
-            phoneNumber: ''
+            name: user.medicalInfo?.emergencyContact?.name || '',
+            relationship: user.medicalInfo?.emergencyContact?.relationship || '',
+            phoneNumber: user.medicalInfo?.emergencyContact?.phoneNumber || ''
           },
-          insuranceProvider: '',
-          insurancePolicyNumber: '',
-          height: '',
-          weight: ''
+          insuranceProvider: user.medicalInfo?.insuranceProvider || '',
+          insurancePolicyNumber: user.medicalInfo?.insurancePolicyNumber || '',
+          height: user.medicalInfo?.height || '',
+          weight: user.medicalInfo?.weight || ''
         }
       });
     }
@@ -204,7 +204,7 @@ const ProfileEditor = () => {
     try {
       setLoading(true);
       
-      const response = await userAPI.updateProfile(formData);
+      const response = await userAPI.updateProfile(user._id, formData);
       
       if (response.data.success) {
         updateUser(response.data.data.user);
@@ -649,11 +649,120 @@ const ProfileEditor = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Identity Verification Section */}
+          <div className="bg-gradient-to-r from-orange-50 to-amber-50 border-2 border-orange-200 rounded-2xl p-8 shadow-lg">
+            <div className="flex items-start space-x-4 mb-6">
+              <div className="w-14 h-14 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <CheckCircleIcon className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Identity Verification</h3>
+                <p className="text-gray-700">
+                  Verify your identity to access premium features and ensure secure healthcare services.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              <div className="bg-white rounded-xl p-6 shadow-md border border-orange-100">
+                <div className="flex items-center space-x-3 mb-4">
+                  <DocumentTextIcon className="w-6 h-6 text-orange-600" />
+                  <h4 className="font-bold text-gray-900">Verification Status</h4>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Email Verified</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      user?.isEmailVerified 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {user?.isEmailVerified ? '✓ Verified' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Phone Verified</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      user?.isPhoneVerified 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {user?.isPhoneVerified ? '✓ Verified' : 'Pending'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Identity Verified</span>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      user?.isVerified 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {user?.isVerified ? '✓ Verified' : 'Pending'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-xl p-6 shadow-md border border-orange-100">
+                <div className="flex items-center space-x-3 mb-4">
+                  <DocumentTextIcon className="w-6 h-6 text-orange-600" />
+                  <h4 className="font-bold text-gray-900">Required Documents</h4>
+                </div>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li className="flex items-start space-x-2">
+                    <span className="text-orange-600 font-bold">•</span>
+                    <span>Government-issued ID (Passport, Driver's License, National ID)</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-orange-600 font-bold">•</span>
+                    <span>Proof of Address (Utility Bill, Bank Statement)</span>
+                  </li>
+                  <li className="flex items-start space-x-2">
+                    <span className="text-orange-600 font-bold">•</span>
+                    <span>Recent Photo (Clear face photo)</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            {!user?.isVerified && (
+              <div className="bg-white rounded-xl p-6 shadow-md border border-orange-100">
+                <h4 className="font-bold text-gray-900 mb-4">Upload Verification Documents</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Upload your identity documents to complete verification. All documents are encrypted and securely stored.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Navigate to documents tab where they can upload ID documents
+                    window.location.href = '/dashboard?tab=documents';
+                  }}
+                  className="w-full px-6 py-3 bg-gradient-to-r from-orange-600 to-amber-600 text-white rounded-lg hover:from-orange-700 hover:to-amber-700 transition-all duration-200 transform hover:scale-105 shadow-lg font-semibold flex items-center justify-center space-x-2"
+                >
+                  <DocumentTextIcon className="w-5 h-5" />
+                  <span>Go to Documents & Upload ID</span>
+                </button>
+              </div>
+            )}
+
+            {user?.isVerified && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                <div className="flex items-center space-x-3">
+                  <CheckCircleIcon className="w-6 h-6 text-green-600" />
+                  <div>
+                    <p className="font-semibold text-green-900">Identity Verified!</p>
+                    <p className="text-sm text-green-700">Your account is fully verified and you have access to all features.</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
           <div className="flex justify-end space-x-4">
             <button
               type="button"
-              onClick={() => window.history.back()}
+              onClick={() => window.location.reload()}
               className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel

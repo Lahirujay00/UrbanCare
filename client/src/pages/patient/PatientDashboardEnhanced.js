@@ -13,7 +13,9 @@ import {
   ExclamationCircleIcon,
   QrCodeIcon,
   CloudArrowUpIcon,
-  CurrencyDollarIcon
+  CurrencyDollarIcon,
+  UserCircleIcon,
+  ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -24,6 +26,7 @@ import RefundManager from '../../components/Refunds/RefundManager';
 import ChatBot from '../../components/ChatBot/ChatBot';
 import AppointmentBooking from './AppointmentBooking';
 import MedicalRecords from './MedicalRecords';
+import ProfileEditor from './ProfileEditor';
 import toast from 'react-hot-toast';
 
 const PatientDashboardEnhanced = () => {
@@ -49,7 +52,7 @@ const PatientDashboardEnhanced = () => {
     { id: 'book-appointment', name: 'Book Appointment', icon: CalendarIcon },
     { id: 'health-card', name: 'Health Card', icon: QrCodeIcon },
     { id: 'documents', name: 'Medical Records', icon: DocumentTextIcon },
-    { id: 'refunds', name: 'Refunds', icon: CurrencyDollarIcon }
+    { id: 'profile', name: 'Profile & Verification', icon: UserCircleIcon }
   ];
 
   // Handle URL parameters for tab navigation
@@ -58,6 +61,10 @@ const PatientDashboardEnhanced = () => {
     const tabParam = urlParams.get('tab');
     if (tabParam && tabs.some(tab => tab.id === tabParam)) {
       setActiveTab(tabParam);
+    }
+    // Refresh data when navigating to overview from payment
+    if (tabParam === 'overview' || !tabParam) {
+      fetchDashboardData();
     }
   }, [location.search]);
 
@@ -72,7 +79,7 @@ const PatientDashboardEnhanced = () => {
       
       // Fetch appointments
       const appointmentsRes = await appointmentAPI.getAppointments({
-        status: 'scheduled,confirmed'
+        status: 'pending-payment,scheduled,confirmed'
       });
       
       if (appointmentsRes.data.success) {
@@ -248,12 +255,12 @@ const PatientDashboardEnhanced = () => {
               <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-3xl font-bold text-gray-900 mb-1">0</p>
-                    <p className="text-gray-600 text-sm font-medium">Pending Refunds</p>
-                    <p className="text-xs text-orange-600 mt-1">All processed</p>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">{user?.isVerified ? 'Verified' : 'Pending'}</p>
+                    <p className="text-gray-600 text-sm font-medium">Identity Status</p>
+                    <p className="text-xs text-orange-600 mt-1">{user?.isVerified ? 'Account verified' : 'Verification needed'}</p>
                   </div>
                   <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <CurrencyDollarIcon className="w-8 h-8 text-white" />
+                    <ShieldCheckIcon className="w-8 h-8 text-white" />
                   </div>
                 </div>
               </div>
@@ -392,16 +399,16 @@ const PatientDashboardEnhanced = () => {
               </button>
 
               <button
-                onClick={() => setActiveTab('refunds')}
+                onClick={() => setActiveTab('profile')}
                 className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 text-left"
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
-                    <CurrencyDollarIcon className="w-6 h-6 text-white" />
+                    <UserCircleIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">Request Refunds</h3>
-                    <p className="text-sm text-gray-600">Manage appointment refunds</p>
+                    <h3 className="font-bold text-gray-900">Update Profile</h3>
+                    <p className="text-sm text-gray-600">Manage personal info & verification</p>
                   </div>
                 </div>
               </button>
@@ -426,8 +433,12 @@ const PatientDashboardEnhanced = () => {
           </div>
         )}
 
-        {/* Refunds Tab */}
-        {activeTab === 'refunds' && <RefundManager />}
+        {/* Profile & Verification Tab */}
+        {activeTab === 'profile' && (
+          <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
+            <ProfileEditor />
+          </div>
+        )}
       </div>
 
       {/* ChatBot Component */}
