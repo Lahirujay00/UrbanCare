@@ -62,6 +62,7 @@ const Login = () => {
           doctor: 'Welcome back, Doctor! Your patients await.',
           staff: 'Welcome back! Ready to assist patients today.',
           manager: 'Welcome back! Check today\'s analytics and reports.',
+          receptionist: 'Welcome back! Ready to help patients today.',
           admin: 'Welcome back, Admin! System management awaits.'
         };
         
@@ -73,10 +74,13 @@ const Login = () => {
           doctor: '/doctor/dashboard',
           staff: '/staff/dashboard',
           manager: '/manager/dashboard',
+          receptionist: '/receptionist/dashboard',
           admin: '/admin/dashboard'
         };
         
         const redirectPath = roleRoutes[result.user?.role] || '/dashboard';
+        console.log('Login - User role:', result.user?.role);
+        console.log('Login - Redirecting to:', redirectPath);
         navigate(redirectPath);
       }
     } catch (error) {
