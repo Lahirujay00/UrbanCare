@@ -38,7 +38,8 @@ const ReceptionistDashboard = () => {
   
   // Patient medical history (for medical records tab)
   const [patientMedicalHistory, setPatientMedicalHistory] = useState([]);
-  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState({}); // Changed to object: { recordId: [files] }
+  const [justUploadedRecordId, setJustUploadedRecordId] = useState(null); // Track recently uploaded record
 
   const tabs = [
     { id: 'search', name: 'Patient Search', icon: MagnifyingGlassIcon },
@@ -155,9 +156,12 @@ const ReceptionistDashboard = () => {
   // Fetch patient medical history when patient is selected
   const fetchPatientMedicalHistory = async (patientId) => {
     try {
+      console.log('Fetching medical history for patient:', patientId);
       const response = await api.get(`/medical-records/patient/${patientId}`);
+      console.log('Medical history response:', response.data);
       if (response.data.success) {
         setPatientMedicalHistory(response.data.data.records || []);
+        console.log('Medical records set:', response.data.data.records);
       }
     } catch (error) {
       console.error('Error fetching medical history:', error);
@@ -166,8 +170,8 @@ const ReceptionistDashboard = () => {
     }
   };
 
-  // Handle file selection
-  const handleFileSelect = (event) => {
+  // Handle file selection for specific record
+  const handleFileSelect = (event, recordId) => {
     const files = Array.from(event.target.files);
     
     // Validate file size (max 5MB per file)
@@ -180,25 +184,36 @@ const ReceptionistDashboard = () => {
       return true;
     });
 
-    setSelectedFiles(prev => [...prev, ...validFiles]);
+    setSelectedFiles(prev => ({
+      ...prev,
+      [recordId]: [...(prev[recordId] || []), ...validFiles]
+    }));
   };
 
-  // Remove selected file
-  const removeFile = (index) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  // Remove selected file for specific record
+  const removeFile = (recordId, index) => {
+    setSelectedFiles(prev => ({
+      ...prev,
+      [recordId]: prev[recordId].filter((_, i) => i !== index)
+    }));
   };
 
   // Upload documents to medical record
   const uploadDocuments = async (medicalRecordId) => {
-    if (selectedFiles.length === 0) {
+    const recordFiles = selectedFiles[medicalRecordId] || [];
+    
+    if (recordFiles.length === 0) {
       toast.error('Please select files to upload');
       return;
     }
 
     try {
       setLoading(true);
+      console.log('Uploading documents to record:', medicalRecordId);
+      console.log('Files to upload:', recordFiles);
+      
       const formData = new FormData();
-      selectedFiles.forEach(file => {
+      recordFiles.forEach(file => {
         formData.append('documents', file);
       });
 
@@ -212,17 +227,35 @@ const ReceptionistDashboard = () => {
         }
       );
 
+      console.log('Upload response:', response.data);
+
       if (response.data.success) {
         toast.success('Lab test documents uploaded successfully!');
-        setSelectedFiles([]);
+        
+        // Clear files for this specific record
+        setSelectedFiles(prev => {
+          const updated = { ...prev };
+          delete updated[medicalRecordId];
+          return updated;
+        });
+        
+        // Mark this record as just uploaded for animation
+        setJustUploadedRecordId(medicalRecordId);
         
         // Refresh medical history to show updated documents
         if (selectedPatient) {
+          console.log('Refreshing medical history after upload...');
           await fetchPatientMedicalHistory(selectedPatient._id);
         }
+        
+        // Clear the animation after 3 seconds
+        setTimeout(() => {
+          setJustUploadedRecordId(null);
+        }, 3000);
       }
     } catch (error) {
       console.error('Error uploading documents:', error);
+      console.error('Error response:', error.response?.data);
       toast.error(error.response?.data?.message || 'Failed to upload documents');
     } finally {
       setLoading(false);
@@ -582,6 +615,7 @@ const ReceptionistDashboard = () => {
                           onClick={() => {
                             setSelectedPatient(null);
                             setPatientMedicalHistory([]);
+                            setSelectedFiles({}); // Clear all selected files
                           }}
                           className="text-blue-600 hover:text-blue-800 font-semibold"
                         >
@@ -708,9 +742,17 @@ const ReceptionistDashboard = () => {
 
                                     {/* Existing Documents */}
                                     {hasDocuments && (
-                                      <div className="mt-3 pt-3 border-t-2 border-gray-200">
-                                        <p className="text-xs font-bold text-green-700 mb-2">
-                                          ✅ Uploaded Documents ({record.documents.length}):
+                                      <div className={`mt-3 pt-3 border-t-2 border-green-200 bg-green-50 -mx-5 px-5 pb-3 rounded-b-lg transition-all ${
+                                        justUploadedRecordId === record._id ? 'ring-4 ring-green-300 animate-pulse' : ''
+                                      }`}>
+                                        <p className="text-sm font-bold text-green-700 mb-3 flex items-center space-x-2">
+                                          <DocumentTextIcon className="w-5 h-5" />
+                                          <span>✅ Lab Documents Uploaded ({record.documents.length})</span>
+                                          {justUploadedRecordId === record._id && (
+                                            <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full animate-bounce">
+                                              NEW!
+                                            </span>
+                                          )}
                                         </p>
                                         <div className="flex flex-wrap gap-2">
                                           {record.documents.map((doc, i) => (
@@ -719,10 +761,13 @@ const ReceptionistDashboard = () => {
                                               href={`${process.env.REACT_APP_API_URL?.replace('/api', '')}${doc.fileUrl}`}
                                               target="_blank"
                                               rel="noopener noreferrer"
-                                              className="text-xs px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg border border-green-300 flex items-center space-x-1 transition-colors"
+                                              className="text-sm px-3 py-2 bg-white text-green-700 hover:bg-green-100 rounded-lg border-2 border-green-300 flex items-center space-x-2 transition-all hover:shadow-md font-medium"
                                             >
-                                              <DocumentTextIcon className="w-3 h-3" />
+                                              <DocumentTextIcon className="w-4 h-4" />
                                               <span>{doc.fileName}</span>
+                                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                              </svg>
                                             </a>
                                           ))}
                                         </div>
@@ -733,9 +778,24 @@ const ReceptionistDashboard = () => {
 
                                 {/* Upload Documents Section for this record */}
                                 <div className="mt-4 pt-4 border-t-2 border-gray-200">
-                                  <label className="block text-sm font-bold text-gray-700 mb-3">
-                                    📎 Upload Lab Test Results for this Visit
-                                  </label>
+                                  <div className="flex items-center justify-between mb-3">
+                                    <label className="block text-sm font-bold text-gray-700">
+                                      📎 Upload Lab Test Results for this Visit
+                                    </label>
+                                    {!hasDocuments && (
+                                      <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-semibold">
+                                        No documents yet
+                                      </span>
+                                    )}
+                                    {hasDocuments && (
+                                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold flex items-center space-x-1">
+                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                        </svg>
+                                        <span>{record.documents.length} document(s)</span>
+                                      </span>
+                                    )}
+                                  </div>
                                   
                                   {/* File Input */}
                                   <div className="mb-4">
@@ -753,24 +813,20 @@ const ReceptionistDashboard = () => {
                                         type="file"
                                         multiple
                                         accept=".pdf,.jpg,.jpeg,.png"
-                                        onChange={(e) => {
-                                          handleFileSelect(e);
-                                          // Store the record ID for later use
-                                          e.target.dataset.recordId = record._id;
-                                        }}
+                                        onChange={(e) => handleFileSelect(e, record._id)}
                                         className="hidden"
                                       />
                                     </label>
                                   </div>
 
                                   {/* Show selected files and upload button only for this record */}
-                                  {selectedFiles.length > 0 && (
+                                  {selectedFiles[record._id] && selectedFiles[record._id].length > 0 && (
                                     <div className="space-y-3">
                                       <div className="space-y-2">
                                         <p className="text-sm font-semibold text-gray-700">
-                                          Selected Files ({selectedFiles.length})
+                                          Selected Files ({selectedFiles[record._id].length})
                                         </p>
-                                        {selectedFiles.map((file, idx) => (
+                                        {selectedFiles[record._id].map((file, idx) => (
                                           <div
                                             key={idx}
                                             className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200"
@@ -785,7 +841,7 @@ const ReceptionistDashboard = () => {
                                               </div>
                                             </div>
                                             <button
-                                              onClick={() => removeFile(idx)}
+                                              onClick={() => removeFile(record._id, idx)}
                                               className="text-red-500 hover:text-red-700 transition-colors"
                                             >
                                               <XMarkIcon className="w-5 h-5" />

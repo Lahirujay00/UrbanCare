@@ -52,9 +52,34 @@ const medicalRecordSchema = new mongoose.Schema({
     icd10Codes: [String],
     severity: {
       type: String,
-      enum: ['low', 'moderate', 'high', 'critical']
+      enum: ['low', 'mild', 'moderate', 'high', 'severe', 'critical']
     }
   },
+  
+  // Treatment Plan
+  treatmentPlan: {
+    type: String,
+    maxlength: [5000, 'Treatment plan cannot exceed 5000 characters']
+  },
+  
+  // Lab Tests Ordered
+  labTests: [{
+    testName: String,
+    testCode: String,
+    orderedDate: {
+      type: Date,
+      default: Date.now
+    },
+    priority: {
+      type: String,
+      enum: ['routine', 'urgent', 'stat']
+    },
+    status: {
+      type: String,
+      enum: ['ordered', 'in-progress', 'completed', 'cancelled'],
+      default: 'ordered'
+    }
+  }],
   
   // Prescription Information
   prescriptions: [{
@@ -128,6 +153,22 @@ const medicalRecordSchema = new mongoose.Schema({
       default: Date.now
     },
     size: Number
+  }],
+  
+  // Documents (lab results, test reports, etc.) - used by receptionist
+  documents: [{
+    fileName: String,
+    fileType: String,
+    fileUrl: String,
+    fileSize: Number,
+    uploadedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    uploadedAt: {
+      type: Date,
+      default: Date.now
+    }
   }],
   
   // Notes and Observations
