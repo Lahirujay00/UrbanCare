@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema({
   // Role and Status
   role: {
     type: String,
-    enum: ['patient', 'doctor', 'staff', 'manager'],
+    enum: ['patient', 'doctor', 'staff', 'manager', 'receptionist'],
     default: 'patient'
   },
   isActive: {

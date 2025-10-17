@@ -221,8 +221,8 @@ router.get('/nic-status', auth, async (req, res) => {
 
 // @desc    Get NIC document image
 // @route   GET /api/users/nic-document/:patientId
-// @access  Private (Manager, Staff)
-router.get('/nic-document/:patientId', auth, authorize('manager', 'staff'), async (req, res) => {
+// @access  Private (Manager, Staff, Receptionist)
+router.get('/nic-document/:patientId', auth, authorize('manager', 'staff', 'receptionist'), async (req, res) => {
   try {
     console.log('Fetching NIC document for patient:', req.params.patientId);
     
@@ -440,33 +440,44 @@ router.put('/:id/profile', auth, [
   }
 });
 
-// @desc    Search users (Admin/Manager only)
+// @desc    Search users (Admin/Manager/Receptionist)
 // @route   GET /api/users/search
-// @access  Private (Admin/Manager)
-router.get('/search', auth, authorize('admin', 'manager'), async (req, res) => {
+// @access  Private (Admin/Manager/Staff/Receptionist)
+router.get('/search', auth, authorize('admin', 'manager', 'staff', 'receptionist'), async (req, res) => {
   try {
-    const { q, role, isActive } = req.query;
+    // Support both 'q' and 'query' parameters for backwards compatibility
+    const searchQuery = req.query.q || req.query.query;
+    const { role, isActive } = req.query;
     
-    let query = {};
-    
-    if (q) {
-      query.$or = [
-        { firstName: new RegExp(q, 'i') },
-        { lastName: new RegExp(q, 'i') },
-        { email: new RegExp(q, 'i') }
-      ];
+    if (!searchQuery) {
+      return res.status(400).json({
+        success: false,
+        message: 'Search query is required'
+      });
     }
     
+    // Build search filter with more fields
+    const searchFilter = {
+      $or: [
+        { firstName: { $regex: searchQuery, $options: 'i' } },
+        { lastName: { $regex: searchQuery, $options: 'i' } },
+        { email: { $regex: searchQuery, $options: 'i' } },
+        { phone: { $regex: searchQuery, $options: 'i' } },
+        { digitalHealthCardId: { $regex: searchQuery, $options: 'i' } },
+        { nicNumber: { $regex: searchQuery, $options: 'i' } }
+      ]
+    };
+    
     if (role) {
-      query.role = role;
+      searchFilter.role = role;
     }
     
     if (isActive !== undefined) {
-      query.isActive = isActive === 'true';
+      searchFilter.isActive = isActive === 'true';
     }
 
-    const users = await User.find(query)
-      .select('-password')
+    const users = await User.find(searchFilter)
+      .select('-password -resetPasswordToken -resetPasswordExpire')
       .sort({ createdAt: -1 })
       .limit(50);
 
@@ -479,15 +490,16 @@ router.get('/search', auth, authorize('admin', 'manager'), async (req, res) => {
     console.error('Search users error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      error: error.message
     });
   }
 });
 
 // @desc    Get patients for identity verification
 // @route   GET /api/users/patients/verification
-// @access  Private (Manager, Staff)
-router.get('/patients/verification', auth, authorize('manager', 'staff'), async (req, res) => {
+// @access  Private (Manager, Staff, Receptionist)
+router.get('/patients/verification', auth, authorize('manager', 'staff', 'receptionist'), async (req, res) => {
   try {
     const { status } = req.query;
     
@@ -519,8 +531,8 @@ router.get('/patients/verification', auth, authorize('manager', 'staff'), async 
 
 // @desc    Verify patient identity
 // @route   PUT /api/users/patients/:id/verify-identity
-// @access  Private (Manager, Staff)
-router.put('/patients/:id/verify-identity', auth, authorize('manager', 'staff'), async (req, res) => {
+// @access  Private (Manager, Staff, Receptionist)
+router.put('/patients/:id/verify-identity', auth, authorize('manager', 'staff', 'receptionist'), async (req, res) => {
   try {
     const { verificationStatus, verificationNote } = req.body;
 
@@ -556,6 +568,57 @@ router.put('/patients/:id/verify-identity', auth, authorize('manager', 'staff'),
     });
   } catch (error) {
     console.error('Verify patient identity error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Verify patient by Health Card ID
+// @route   GET /api/users/verify-health-card/:healthCardId
+// @access  Private (Staff, Manager, Receptionist)
+router.get('/verify-health-card/:healthCardId', auth, authorize('staff', 'manager', 'receptionist'), async (req, res) => {
+  try {
+    const { healthCardId } = req.params;
+
+    if (!healthCardId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Health Card ID is required'
+      });
+    }
+
+    const patient = await User.findOne({
+      digitalHealthCardId: healthCardId,
+      role: 'patient'
+    }).select('-password -resetPasswordToken -resetPasswordExpire');
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found with this Health Card ID'
+      });
+    }
+
+    // Check identity verification status
+    const verificationStatus = {
+      isVerified: patient.identityVerificationStatus === 'verified',
+      status: patient.identityVerificationStatus,
+      hasNicDocument: !!patient.nicDocument,
+      nicNumber: patient.nicNumber
+    };
+
+    res.json({
+      success: true,
+      data: {
+        patient,
+        verification: verificationStatus
+      }
+    });
+  } catch (error) {
+    console.error('Verify health card error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',
