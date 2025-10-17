@@ -13,7 +13,7 @@ import api from '../../services/api';
 import toast from 'react-hot-toast';
 
 const NICVerification = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [nicNumber, setNicNumber] = useState('');
@@ -108,6 +108,10 @@ const NICVerification = () => {
         // Update user context
         if (updateUser) {
           updateUser(response.data.data.user);
+        }
+        // Refresh user data from server
+        if (refreshUser) {
+          refreshUser();
         }
       }
     } catch (error) {

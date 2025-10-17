@@ -31,7 +31,7 @@ import NICVerification from '../../components/Patient/NICVerification';
 import toast from 'react-hot-toast';
 
 const PatientDashboardEnhanced = () => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -68,6 +68,7 @@ const PatientDashboardEnhanced = () => {
     // Refresh data when navigating to overview from payment
     if (tabParam === 'overview' || !tabParam) {
       fetchDashboardData();
+      refreshUser(); // Refresh user data to get updated identity verification status
     }
   }, [location.search]);
 
@@ -96,11 +97,17 @@ const PatientDashboardEnhanced = () => {
         console.log('All appointments:', allAppts);
         console.log('Cancelled appointments:', allAppts.filter(apt => apt.status === 'cancelled'));
         
-        // Update stats - count only active upcoming appointments
-        const activeUpcoming = allAppts.filter(apt => 
-          new Date(apt.appointmentDate) >= new Date() && 
-          !['cancelled', 'completed', 'no-show'].includes(apt.status)
-        ).length;
+        // Update stats - count only active upcoming appointments (future date/time)
+        const now = new Date();
+        
+        const activeUpcoming = allAppts.filter(apt => {
+          // Combine date and time for accurate comparison
+          const apptDate = new Date(apt.appointmentDate);
+          const [hours, minutes] = apt.appointmentTime.split(':');
+          apptDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          
+          return apptDate > now && !['cancelled', 'completed', 'no-show'].includes(apt.status);
+        }).length;
         
         setStats(prev => ({
           ...prev,
@@ -271,11 +278,29 @@ const PatientDashboardEnhanced = () => {
               <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-3xl font-bold text-gray-900 mb-1">{user?.isVerified ? 'Verified' : 'Pending'}</p>
+                    <p className="text-3xl font-bold text-gray-900 mb-1">
+                      {user?.identityVerificationStatus === 'verified' ? 'Verified' : 
+                       user?.identityVerificationStatus === 'pending' ? 'Pending' : 
+                       user?.identityVerificationStatus === 'rejected' ? 'Rejected' : 'Unverified'}
+                    </p>
                     <p className="text-gray-600 text-sm font-medium">Identity Status</p>
-                    <p className="text-xs text-orange-600 mt-1">{user?.isVerified ? 'Account verified' : 'Verification needed'}</p>
+                    <p className={`text-xs mt-1 ${
+                      user?.identityVerificationStatus === 'verified' ? 'text-green-600' :
+                      user?.identityVerificationStatus === 'pending' ? 'text-blue-600' :
+                      user?.identityVerificationStatus === 'rejected' ? 'text-red-600' :
+                      'text-orange-600'
+                    }`}>
+                      {user?.identityVerificationStatus === 'verified' ? 'Identity verified ✓' : 
+                       user?.identityVerificationStatus === 'pending' ? 'Under review' : 
+                       user?.identityVerificationStatus === 'rejected' ? 'Verification rejected' : 'Verification needed'}
+                    </p>
                   </div>
-                  <div className="w-16 h-16 bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg ${
+                    user?.identityVerificationStatus === 'verified' ? 'bg-gradient-to-br from-green-500 to-green-600' :
+                    user?.identityVerificationStatus === 'pending' ? 'bg-gradient-to-br from-blue-500 to-blue-600' :
+                    user?.identityVerificationStatus === 'rejected' ? 'bg-gradient-to-br from-red-500 to-red-600' :
+                    'bg-gradient-to-br from-orange-500 to-orange-600'
+                  }`}>
                     <ShieldCheckIcon className="w-8 h-8 text-white" />
                   </div>
                 </div>
@@ -304,9 +329,20 @@ const PatientDashboardEnhanced = () => {
                 </div>
               </div>
               <div className="p-6">
-                {appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).length > 0 ? (
+                {(() => {
+                  const now = new Date();
+                  const upcomingAppts = appointments.filter(apt => {
+                    // Combine date and time for accurate comparison
+                    const apptDate = new Date(apt.appointmentDate);
+                    const [hours, minutes] = apt.appointmentTime.split(':');
+                    apptDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                    
+                    return apptDate > now && !['cancelled', 'completed', 'no-show'].includes(apt.status);
+                  });
+                  
+                  return upcomingAppts.length > 0 ? (
                   <div className="space-y-4">
-                    {appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).slice(0, 2).map((appointment) => (
+                    {upcomingAppts.slice(0, 2).map((appointment) => (
                       <div
                         key={appointment._id}
                         className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 p-6 rounded-2xl hover:shadow-lg transition-all duration-300"
@@ -364,14 +400,14 @@ const PatientDashboardEnhanced = () => {
                         </div>
                       </div>
                     ))}
-                    {appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).length > 2 && (
+                    {upcomingAppts.length > 2 && (
                       <div className="text-center pt-4">
                         <button
                           onClick={() => setActiveTab('appointments')}
                           className="inline-flex items-center space-x-2 px-6 py-3 bg-white text-blue-600 border-2 border-blue-200 rounded-xl hover:bg-blue-50 transition-colors font-medium"
                         >
                           <ClockIcon className="w-5 h-5" />
-                          <span>View All Appointments ({appointments.filter(apt => !['cancelled', 'completed', 'no-show'].includes(apt.status)).length})</span>
+                          <span>View All Appointments ({upcomingAppts.length})</span>
                           <ArrowRightIcon className="w-4 h-4" />
                         </button>
                       </div>
@@ -387,10 +423,11 @@ const PatientDashboardEnhanced = () => {
                       className="inline-flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-medium"
                     >
                       <PlusIcon className="w-5 h-5" />
-                      <span>Book Your First Appointment</span>
+                      <span>Book Your Appointment</span>
                     </button>
                   </div>
-                )}
+                  );
+                })()}
               </div>
             </div>
 
@@ -479,15 +516,20 @@ const PatientDashboardEnhanced = () => {
                       <CalendarIcon className="w-5 h-5 text-blue-600" />
                       <span>Upcoming Appointments</span>
                     </h3>
-                    {appointments.filter(apt => 
-                      new Date(apt.appointmentDate) >= new Date() && 
-                      !['cancelled', 'completed', 'no-show'].includes(apt.status)
-                    ).length > 0 ? (
+                    {(() => {
+                      const now = new Date();
+                      const upcomingAppts = appointments.filter(apt => {
+                        // Combine date and time for accurate comparison
+                        const apptDate = new Date(apt.appointmentDate);
+                        const [hours, minutes] = apt.appointmentTime.split(':');
+                        apptDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+                        
+                        return apptDate > now && !['cancelled', 'completed', 'no-show'].includes(apt.status);
+                      });
+                      
+                      return upcomingAppts.length > 0 ? (
                       <div className="space-y-4">
-                        {appointments.filter(apt => 
-                          new Date(apt.appointmentDate) >= new Date() && 
-                          !['cancelled', 'completed', 'no-show'].includes(apt.status)
-                        ).map((appointment) => (
+                        {upcomingAppts.map((appointment) => (
                           <div
                             key={appointment._id}
                             className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-100 p-6 rounded-2xl hover:shadow-lg transition-all duration-300"
@@ -546,7 +588,8 @@ const PatientDashboardEnhanced = () => {
                         <CalendarIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                         <p className="text-gray-600">No upcoming appointments</p>
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
 
                   {/* Past Appointments (History) */}
