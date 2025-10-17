@@ -31,6 +31,7 @@ const PatientRecords = () => {
   const [patientProfile, setPatientProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
   const [error, setError] = useState(null);
+  const [documents, setDocuments] = useState([]);
   const [showTreatmentPlanModal, setShowTreatmentPlanModal] = useState(false);
   const [showViewRecordModal, setShowViewRecordModal] = useState(false);
   const [showEditRecordModal, setShowEditRecordModal] = useState(false);
@@ -75,26 +76,55 @@ const PatientRecords = () => {
       setError(null);
       
       const response = await fetch(`/api/doctor/patients/${patientId}/profile`, {
-        method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-      
-      const data = await response.json();
-      
-      if (data.success) {
-        setPatientProfile(data.data);
-      } else {
-        setError(data.message || 'Failed to load patient profile');
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Server error: ${response.status}`);
       }
+
+      const data = await response.json();
+      setPatientProfile(data.data);
+      
     } catch (error) {
       console.error('Error fetching patient profile:', error);
-      setError('Failed to load patient profile');
-      toast.error('Failed to load patient profile');
-    } finally {
-      setLoading(false);
+      setError(`Unable to load patient profile: ${error.message}`);
+    }
+    
+    // Always try to fetch documents, even if profile fails
+    try {
+      console.log('Fetching documents for patient:', patientId);
+      await fetchPatientDocuments();
+    } catch (docError) {
+      console.error('Error fetching documents:', docError);
+      // Don't set main error for document fetch failure
+    }
+    
+    setLoading(false);
+  };
+
+  const fetchPatientDocuments = async () => {
+    try {
+      const response = await fetch(`/api/documents/patient/${patientId}`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Documents API response:', data);
+        setDocuments(data.data?.documents || []);
+      } else {
+        console.error('Failed to fetch patient documents:', response.status, response.statusText);
+        setDocuments([]);
+      }
+    } catch (error) {
+      console.error('Error fetching patient documents:', error);
+      setDocuments([]);
     }
   };
 
@@ -740,7 +770,8 @@ const PatientRecords = () => {
             <nav className="flex space-x-8 px-6">
               {[
                 { id: 'overview', name: 'Medical Records', icon: DocumentTextIcon },
-                { id: 'appointments', name: 'Appointments', icon: CalendarIcon }
+                { id: 'appointments', name: 'Appointments', icon: CalendarIcon },
+                { id: 'documents', name: 'Documents', icon: DocumentDuplicateIcon }
               ].map((tab) => {
                 const Icon = tab.icon;
                 return (
@@ -1044,6 +1075,132 @@ const PatientRecords = () => {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Documents Tab */}
+            {activeTab === 'documents' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-900">Patient Documents</h3>
+                  <span className="text-sm text-gray-500">
+                    {documents?.length || 0} documents
+                  </span>
+                </div>
+                
+                {documents && documents.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {documents.map((document) => (
+                      <div key={document._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                              {document.documentType === 'lab-report' ? (
+                                <BeakerIcon className="w-5 h-5 text-blue-600" />
+                              ) : document.documentType === 'blood-test' ? (
+                                <BeakerIcon className="w-5 h-5 text-red-600" />
+                              ) : document.documentType === 'x-ray' ? (
+                                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                              ) : (
+                                <DocumentTextIcon className="w-5 h-5 text-gray-600" />
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900 text-sm">
+                                {document.title}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {new Date(document.createdAt).toLocaleDateString()}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Document Type Badge */}
+                        <div className="mb-3">
+                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                            document.documentType === 'lab-report' ? 'bg-blue-100 text-blue-800' :
+                            document.documentType === 'blood-test' ? 'bg-red-100 text-red-800' :
+                            document.documentType === 'x-ray' ? 'bg-gray-100 text-gray-800' :
+                            document.documentType === 'prescription' ? 'bg-green-100 text-green-800' :
+                            'bg-purple-100 text-purple-800'
+                          }`}>
+                            {document.documentType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </span>
+                        </div>
+
+                        {/* Description */}
+                        {document.description && (
+                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                            {document.description}
+                          </p>
+                        )}
+
+                        {/* File Info */}
+                        <div className="text-xs text-gray-500 mb-3">
+                          <p>File: {document.originalName}</p>
+                          <p>Size: {(document.fileSize / 1024).toFixed(1)} KB</p>
+                          <p>Type: {document.mimeType}</p>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => {
+                              // View document in new tab
+                              window.open(document.fileUrl, '_blank');
+                            }}
+                            className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <EyeIcon className="w-4 h-4" />
+                            <span>View</span>
+                          </button>
+                          <button
+                            onClick={() => {
+                              // Download document
+                              const link = document.createElement('a');
+                              link.href = document.fileUrl;
+                              link.download = document.originalName;
+                              link.target = '_blank';
+                              document.body.appendChild(link);
+                              link.click();
+                              document.body.removeChild(link);
+                            }}
+                            className="flex-1 px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center space-x-1"
+                          >
+                            <ArrowDownTrayIcon className="w-4 h-4" />
+                            <span>Download</span>
+                          </button>
+                        </div>
+
+                        {/* Linked Records */}
+                        {(document.appointment || document.medicalRecord) && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <p className="text-xs text-gray-500 mb-1">Linked to:</p>
+                            {document.appointment && (
+                              <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded mr-2">
+                                Appointment
+                              </span>
+                            )}
+                            {document.medicalRecord && (
+                              <span className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs rounded">
+                                Medical Record
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <DocumentDuplicateIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 text-lg">No documents found</p>
+                    <p className="text-gray-400">Patient documents will appear here when uploaded</p>
                   </div>
                 )}
               </div>
