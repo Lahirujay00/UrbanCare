@@ -169,10 +169,7 @@ const ManagerDashboard = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount);
+    return `LKR ${new Intl.NumberFormat('en-US').format(amount || 0)}`;
   };
 
   const formatDate = (dateString) => {

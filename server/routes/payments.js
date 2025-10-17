@@ -351,12 +351,23 @@ router.get('/stats/overview', auth, authorize('manager', 'admin'), async (req, r
 
     const stats = await Payment.getStatistics(start, end);
     const dailyRevenue = await Payment.getDailyRevenue(start, end);
+    
+    // Get recent payments
+    const recentPayments = await Payment.find({ status: 'completed' })
+      .sort({ paymentDate: -1 })
+      .limit(10)
+      .populate('patient', 'firstName lastName email')
+      .populate('appointment', 'appointmentDate')
+      .lean();
 
     res.json({
       success: true,
       data: {
         stats,
-        dailyRevenue
+        dailyRevenue,
+        recentPayments,
+        totalRevenue: stats.totalRevenue,
+        totalTransactions: stats.totalTransactions
       }
     });
   } catch (error) {
