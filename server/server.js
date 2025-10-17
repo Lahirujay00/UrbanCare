@@ -50,23 +50,23 @@ mongoose.connect(process.env.MONGODB_URI, {
 .then(async () => {
   console.log('✅ MongoDB connected successfully');
 
-  // Auto-setup admin user if it doesn't exist
+  // Auto-setup healthcare manager user if it doesn't exist
   try {
     const User = require('./models/User');
 
-    const existingAdmin = await User.findOne({ email: 'admin@urbancare.com' });
-    if (!existingAdmin) {
-      const adminUser = new User({
-        firstName: 'System',
-        lastName: 'Administrator',
-        email: 'admin@urbancare.com',
-        password: 'Admin123!', // Plain password - will be hashed by pre-save middleware
+    const existingManager = await User.findOne({ email: 'manager@urbancare.com' });
+    if (!existingManager) {
+      const managerUser = new User({
+        firstName: 'Healthcare',
+        lastName: 'Manager',
+        email: 'manager@urbancare.com',
+        password: 'Manager123!', // Plain password - will be hashed by pre-save middleware
         phone: '+1-555-0100',
-        role: 'admin',
+        role: 'manager',
         isActive: true,
         isEmailVerified: true,
         address: {
-          street: '123 Admin Street',
+          street: '123 Healthcare Street',
           city: 'Healthcare City',
           state: 'HC',
           zipCode: '12345',
@@ -74,13 +74,13 @@ mongoose.connect(process.env.MONGODB_URI, {
         }
       });
 
-      await adminUser.save();
-      console.log('✅ Default admin user created automatically');
-      console.log('📧 Email: admin@urbancare.com');
-      console.log('🔑 Password: Admin123!');
+      await managerUser.save();
+      console.log('✅ Default healthcare manager user created automatically');
+      console.log('📧 Email: manager@urbancare.com');
+      console.log('🔑 Password: Manager123!');
     }
   } catch (error) {
-    console.error('❌ Error auto-creating admin user:', error.message);
+    console.error('❌ Error auto-creating healthcare manager user:', error.message);
   }
 })
 .catch((err) => console.error('❌ MongoDB connection error:', err));

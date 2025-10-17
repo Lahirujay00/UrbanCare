@@ -35,7 +35,7 @@ router.post('/register', [
     .withMessage('Please provide a valid phone number'),
   body('role')
     .optional()
-    .isIn(['patient', 'doctor', 'staff', 'manager', 'admin'])
+    .isIn(['patient', 'doctor', 'staff', 'manager'])
     .withMessage('Invalid role specified')
 ], async (req, res) => {
   try {
