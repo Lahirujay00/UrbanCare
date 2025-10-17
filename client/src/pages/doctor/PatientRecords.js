@@ -404,7 +404,6 @@ const PatientRecords = () => {
               {[
                 { id: 'overview', name: 'Medical Records', icon: DocumentTextIcon },
                 { id: 'appointments', name: 'Appointments', icon: CalendarIcon },
-                { id: 'vitals', name: 'Vital Signs', icon: HeartIcon },
                 { id: 'allergies', name: 'Allergies & Conditions', icon: ExclamationTriangleIcon }
               ].map((tab) => {
                 const Icon = tab.icon;
@@ -487,38 +486,6 @@ const PatientRecords = () => {
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             <p className="font-medium text-gray-700 mb-1">Notes:</p>
                             <p className="text-gray-600 text-sm">{record.notes}</p>
-                          </div>
-                        )}
-
-                        {record.vitalSigns && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="font-medium text-gray-700 mb-2">Vital Signs:</p>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
-                              {record.vitalSigns.bloodPressure && (
-                                <div>
-                                  <span className="text-gray-500">BP:</span>
-                                  <span className="ml-1 font-medium">{record.vitalSigns.bloodPressure}</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.heartRate && (
-                                <div>
-                                  <span className="text-gray-500">HR:</span>
-                                  <span className="ml-1 font-medium">{record.vitalSigns.heartRate} bpm</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.temperature && (
-                                <div>
-                                  <span className="text-gray-500">Temp:</span>
-                                  <span className="ml-1 font-medium">{record.vitalSigns.temperature}°F</span>
-                                </div>
-                              )}
-                              {record.vitalSigns.weight && (
-                                <div>
-                                  <span className="text-gray-500">Weight:</span>
-                                  <span className="ml-1 font-medium">{record.vitalSigns.weight} lbs</span>
-                                </div>
-                              )}
-                            </div>
                           </div>
                         )}
 
@@ -607,61 +574,6 @@ const PatientRecords = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Vital Signs Tab */}
-            {activeTab === 'vitals' && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-gray-900">Recent Vital Signs</h3>
-                
-                {medicalRecords?.recentVitals ? (
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      {medicalRecords.recentVitals.bloodPressure && (
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <HeartIcon className="w-8 h-8 text-red-600" />
-                          </div>
-                          <p className="text-sm text-gray-500">Blood Pressure</p>
-                          <p className="text-xl font-bold text-gray-900">{medicalRecords.recentVitals.bloodPressure}</p>
-                        </div>
-                      )}
-                      {medicalRecords.recentVitals.heartRate && (
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-pink-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <HeartIcon className="w-8 h-8 text-pink-600" />
-                          </div>
-                          <p className="text-sm text-gray-500">Heart Rate</p>
-                          <p className="text-xl font-bold text-gray-900">{medicalRecords.recentVitals.heartRate} bpm</p>
-                        </div>
-                      )}
-                      {medicalRecords.recentVitals.temperature && (
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <ClockIcon className="w-8 h-8 text-orange-600" />
-                          </div>
-                          <p className="text-sm text-gray-500">Temperature</p>
-                          <p className="text-xl font-bold text-gray-900">{medicalRecords.recentVitals.temperature}°F</p>
-                        </div>
-                      )}
-                      {medicalRecords.recentVitals.weight && (
-                        <div className="text-center">
-                          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2">
-                            <UserIcon className="w-8 h-8 text-blue-600" />
-                          </div>
-                          <p className="text-sm text-gray-500">Weight</p>
-                          <p className="text-xl font-bold text-gray-900">{medicalRecords.recentVitals.weight} lbs</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-12">
-                    <HeartIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 text-lg">No vital signs recorded</p>
                   </div>
                 )}
               </div>
