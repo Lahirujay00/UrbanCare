@@ -46,7 +46,8 @@ const MedicalRecords = () => {
     title: '',
     description: '',
     category: 'lab-report',
-    file: null
+    file: null,
+    previewUrl: null
   });
 
   useEffect(() => {
@@ -155,11 +156,18 @@ const MedicalRecords = () => {
       if (response.data.success) {
         toast.success('Document uploaded successfully!');
         setShowUploadModal(false);
+        
+        // Clean up preview URL to prevent memory leaks
+        if (uploadForm.previewUrl) {
+          URL.revokeObjectURL(uploadForm.previewUrl);
+        }
+        
         setUploadForm({
           title: '',
           description: '',
           category: 'lab-report',
-          file: null
+          file: null,
+          previewUrl: null
         });
         // Refresh uploaded documents list
         fetchUploadedDocuments();
@@ -189,7 +197,14 @@ const MedicalRecords = () => {
         toast.error('Only PDF, JPEG, and PNG files are allowed');
         return;
       }
-      setUploadForm({ ...uploadForm, file });
+      
+      // Create preview URL for images
+      let previewUrl = null;
+      if (file.type.startsWith('image/')) {
+        previewUrl = URL.createObjectURL(file);
+      }
+      
+      setUploadForm({ ...uploadForm, file, previewUrl });
     }
   };
 
@@ -824,25 +839,54 @@ const MedicalRecords = () => {
                     id="file-upload"
                   />
                   <label htmlFor="file-upload" className="cursor-pointer">
-                    <CloudArrowUpIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     {uploadForm.file ? (
-                      <div>
-                        <p className="text-sm font-semibold text-green-600 mb-1">
-                          {uploadForm.file.name}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {(uploadForm.file.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setUploadForm({ ...uploadForm, file: null })}
-                          className="mt-2 text-sm text-red-600 hover:text-red-700"
-                        >
-                          Remove file
-                        </button>
+                      <div className="space-y-4">
+                        {/* Image Preview */}
+                        {uploadForm.previewUrl ? (
+                          <div className="mx-auto w-48 h-48 border-2 border-gray-200 rounded-lg overflow-hidden">
+                            <img 
+                              src={uploadForm.previewUrl} 
+                              alt="Preview" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        ) : (
+                          <div className="mx-auto w-48 h-32 border-2 border-gray-200 rounded-lg flex items-center justify-center bg-gray-50">
+                            <div className="text-center">
+                              <DocumentTextIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                              <p className="text-xs text-gray-500">PDF Document</p>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* File Info */}
+                        <div className="text-center">
+                          <p className="text-sm font-semibold text-green-600 mb-1">
+                            {uploadForm.file.name}
+                          </p>
+                          <p className="text-xs text-gray-500 mb-2">
+                            {(uploadForm.file.size / 1024 / 1024).toFixed(2)} MB • {uploadForm.file.type}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              // Clean up preview URL to prevent memory leaks
+                              if (uploadForm.previewUrl) {
+                                URL.revokeObjectURL(uploadForm.previewUrl);
+                              }
+                              setUploadForm({ ...uploadForm, file: null, previewUrl: null });
+                            }}
+                            className="px-3 py-1 text-sm text-red-600 hover:text-red-700 border border-red-300 rounded-lg hover:bg-red-50 transition-colors"
+                          >
+                            Remove file
+                          </button>
+                        </div>
                       </div>
                     ) : (
                       <div>
+                        <CloudArrowUpIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                         <p className="text-sm text-gray-600 mb-1">
                           <span className="text-blue-600 font-semibold">Click to upload</span> or drag and drop
                         </p>

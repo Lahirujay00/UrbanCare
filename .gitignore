@@ -107,8 +107,16 @@ Desktop.ini
 *.tmp
 *.temp
 
-# Upload directories
-/server/uploads/
+# Upload directories - Allow images but ignore sensitive files
+/server/uploads/*.txt
+/server/uploads/*.doc
+/server/uploads/*.docx
+/server/uploads/*.pdf
+# Keep images and medical documents for demo/development
+# /server/uploads/documents/*.jpg
+# /server/uploads/documents/*.jpeg
+# /server/uploads/documents/*.png
+# /server/uploads/documents/*.gif
 
 # Database files (if using local DB)
 *.db
@@ -122,7 +130,8 @@ Desktop.ini
 
 # Application specific
 /server/logs/
-/client/public/uploads/
+# Allow client uploads for demo purposes
+# /client/public/uploads/
 
 # Test files
 /test-results/

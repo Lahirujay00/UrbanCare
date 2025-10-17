@@ -1094,118 +1094,140 @@ const PatientRecords = () => {
                 {documents && documents.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {documents.map((doc) => (
-                      <div key={doc._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div key={doc._id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition-shadow">
+                        {/* Image Preview Section */}
+                        {doc.mimeType && doc.mimeType.startsWith('image/') ? (
+                          <div className="h-48 bg-gray-100 relative">
+                            <img 
+                              src={`http://localhost:5000${doc.fileUrl}`}
+                              alt={doc.title}
+                              className="w-full h-full object-cover"
+                              onLoad={(e) => {
+                                console.log('Image loaded successfully:', doc.fileUrl);
+                              }}
+                              onError={(e) => {
+                                console.error('Image failed to load:', doc.fileUrl);
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                              crossOrigin="anonymous"
+                            />
+                            <div className="hidden w-full h-full flex items-center justify-center bg-gray-100">
+                              <div className="text-center">
+                                <DocumentTextIcon className="w-12 h-12 text-gray-400 mx-auto mb-2" />
+                                <p className="text-xs text-gray-500">Preview not available</p>
+                              </div>
+                            </div>
+                            {/* Image overlay with document type */}
+                            <div className="absolute top-2 left-2">
+                              <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                doc.documentType === 'lab-report' ? 'bg-blue-100 text-blue-800' :
+                                doc.documentType === 'blood-test' ? 'bg-red-100 text-red-800' :
+                                doc.documentType === 'x-ray' ? 'bg-gray-100 text-gray-800' :
+                                doc.documentType === 'prescription' ? 'bg-green-100 text-green-800' :
+                                'bg-purple-100 text-purple-800'
+                              }`}>
+                                {doc.documentType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="h-32 bg-gray-50 flex items-center justify-center border-b border-gray-200">
+                            <div className="text-center">
                               {doc.documentType === 'lab-report' ? (
-                                <BeakerIcon className="w-5 h-5 text-blue-600" />
+                                <BeakerIcon className="w-12 h-12 text-blue-600 mx-auto mb-2" />
                               ) : doc.documentType === 'blood-test' ? (
-                                <BeakerIcon className="w-5 h-5 text-red-600" />
+                                <BeakerIcon className="w-12 h-12 text-red-600 mx-auto mb-2" />
                               ) : doc.documentType === 'x-ray' ? (
-                                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg className="w-12 h-12 text-gray-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                               ) : (
-                                <DocumentTextIcon className="w-5 h-5 text-gray-600" />
+                                <DocumentTextIcon className="w-12 h-12 text-gray-600 mx-auto mb-2" />
+                              )}
+                              <span className={`px-2 py-1 text-xs rounded-full font-medium ${
+                                doc.documentType === 'lab-report' ? 'bg-blue-100 text-blue-800' :
+                                doc.documentType === 'blood-test' ? 'bg-red-100 text-red-800' :
+                                doc.documentType === 'x-ray' ? 'bg-gray-100 text-gray-800' :
+                                doc.documentType === 'prescription' ? 'bg-green-100 text-green-800' :
+                                'bg-purple-100 text-purple-800'
+                              }`}>
+                                {doc.documentType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Document Info Section */}
+                        <div className="p-4">
+                          <div className="mb-3">
+                            <p className="font-semibold text-gray-900 text-sm mb-1">
+                              {doc.title}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {new Date(doc.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          {/* Description */}
+                          {doc.description && (
+                            <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                              {doc.description}
+                            </p>
+                          )}
+
+                          {/* File Info */}
+                          <div className="text-xs text-gray-500 mb-3">
+                            <p>File: {doc.originalName}</p>
+                            <p>Size: {(doc.fileSize / 1024).toFixed(1)} KB</p>
+                            <p>Type: {doc.mimeType}</p>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => {
+                                console.log('Document details:', doc);
+                                console.log('File type:', doc.mimeType);
+                                console.log('File URL:', doc.fileUrl);
+                                
+                                // For images, try direct URL first (should work with CORS fixed)
+                                if (doc.mimeType && doc.mimeType.startsWith('image/')) {
+                                  // Try direct image URL
+                                  const fullUrl = `http://localhost:5000${doc.fileUrl}`;
+                                  console.log('Opening image URL:', fullUrl);
+                                  window.open(fullUrl, '_blank');
+                                } else {
+                                  // For PDFs and other documents, try direct URL
+                                  const fullUrl = `http://localhost:5000${doc.fileUrl}`;
+                                  console.log('Opening document URL:', fullUrl);
+                                  window.open(fullUrl, '_blank');
+                                }
+                              }}
+                              className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
+                            >
+                              <EyeIcon className="w-4 h-4" />
+                              <span>{doc.mimeType && doc.mimeType.startsWith('image/') ? 'View Image' : 'View Document'}</span>
+                            </button>
+                          </div>
+
+                          {/* Linked Records */}
+                          {(doc.appointment || doc.medicalRecord) && (
+                            <div className="mt-3 pt-3 border-t border-gray-200">
+                              <p className="text-xs text-gray-500 mb-1">Linked to:</p>
+                              {doc.appointment && (
+                                <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded mr-2">
+                                  Appointment
+                                </span>
+                              )}
+                              {doc.medicalRecord && (
+                                <span className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs rounded">
+                                  Medical Record
+                                </span>
                               )}
                             </div>
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-900 text-sm">
-                                {doc.title}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {new Date(doc.createdAt).toLocaleDateString()}
-                              </p>
-                            </div>
-                          </div>
+                          )}
                         </div>
-
-                        {/* Document Type Badge */}
-                        <div className="mb-3">
-                          <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                            doc.documentType === 'lab-report' ? 'bg-blue-100 text-blue-800' :
-                            doc.documentType === 'blood-test' ? 'bg-red-100 text-red-800' :
-                            doc.documentType === 'x-ray' ? 'bg-gray-100 text-gray-800' :
-                            doc.documentType === 'prescription' ? 'bg-green-100 text-green-800' :
-                            'bg-purple-100 text-purple-800'
-                          }`}>
-                            {doc.documentType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                          </span>
-                        </div>
-
-                        {/* Description */}
-                        {doc.description && (
-                          <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                            {doc.description}
-                          </p>
-                        )}
-
-                        {/* File Info */}
-                        <div className="text-xs text-gray-500 mb-3">
-                          <p>File: {doc.originalName}</p>
-                          <p>Size: {(doc.fileSize / 1024).toFixed(1)} KB</p>
-                          <p>Type: {doc.mimeType}</p>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center space-x-2">
-                          <button
-                            onClick={() => {
-                              console.log('Document details:', doc);
-                              console.log('File type:', doc.mimeType);
-                              console.log('File URL:', doc.fileUrl);
-                              
-                              // For images, create an image viewer modal or direct display
-                              if (doc.mimeType && doc.mimeType.startsWith('image/')) {
-                                // Create a simple image viewer
-                                const imageWindow = window.open('', '_blank');
-                                imageWindow.document.write(`
-                                  <html>
-                                    <head>
-                                      <title>${doc.title}</title>
-                                      <style>
-                                        body { margin: 0; padding: 20px; background: #f0f0f0; text-align: center; }
-                                        img { max-width: 100%; max-height: 90vh; border: 1px solid #ddd; }
-                                        h3 { color: #333; }
-                                      </style>
-                                    </head>
-                                    <body>
-                                      <h3>${doc.title}</h3>
-                                      <img src="http://localhost:5000${doc.fileUrl}" alt="${doc.title}" 
-                                           onerror="this.parentElement.innerHTML='<p>Error loading image. File may not exist.</p>'" />
-                                    </body>
-                                  </html>
-                                `);
-                              } else {
-                                // For PDFs and other documents, try direct URL
-                                const fullUrl = `http://localhost:5000${doc.fileUrl}`;
-                                window.open(fullUrl, '_blank');
-                              }
-                            }}
-                            className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
-                          >
-                            <EyeIcon className="w-4 h-4" />
-                            <span>{doc.mimeType && doc.mimeType.startsWith('image/') ? 'View Image' : 'View Document'}</span>
-                          </button>
-                        </div>
-
-                        {/* Linked Records */}
-                        {(doc.appointment || doc.medicalRecord) && (
-                          <div className="mt-3 pt-3 border-t border-gray-200">
-                            <p className="text-xs text-gray-500 mb-1">Linked to:</p>
-                            {doc.appointment && (
-                              <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded mr-2">
-                                Appointment
-                              </span>
-                            )}
-                            {doc.medicalRecord && (
-                              <span className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs rounded">
-                                Medical Record
-                              </span>
-                            )}
-                          </div>
-                        )}
                       </div>
                     ))}
                   </div>
