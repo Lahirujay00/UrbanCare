@@ -12,6 +12,7 @@
     "test:integration": "jest tests/integration --coverage",
     "test:appointment": "jest tests/unit/services/AppointmentService.test.js tests/unit/repositories/AppointmentRepository.test.js tests/unit/controllers/AppointmentController.test.js tests/unit/services/PaymentService.test.js tests/integration/AppointmentFlow.test.js --coverage",
     "test:coverage": "jest --coverage --coverageReporters=text --coverageReporters=lcov --coverageReporters=html",
+
     "test:usecases": "node tests/runAllTests.js",
     "test:usecases:individual": "node tests/runAllTests.js --individual",
     "test:patient-mgmt": "jest tests/unit/PatientAuthService.test.js --coverage --collectCoverageFrom=services/PatientAuthService.js",
@@ -23,6 +24,7 @@
     "test:manager": "jest tests/unit/ManagerController.test.js tests/unit/ManagerService.test.js --coverage --collectCoverageFrom=controllers/ManagerController.js --collectCoverageFrom=services/ManagerService.js",
     "test:records": "jest tests/unit/DoctorController.test.js --coverage --collectCoverageFrom=controllers/DoctorController.js",
     "test:reports": "jest tests/unit/GenerateReports.test.js --coverage --collectCoverageFrom=controllers/ReportGenerationController.js --collectCoverageFrom=services/ManagerService.js",
+
     "test:doctor": "jest tests/doctor.test.js",
     "setup-admin": "node scripts/setupAdmin.js",
     "lint": "eslint . --ext .js",
