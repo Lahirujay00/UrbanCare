@@ -64,8 +64,17 @@ const MedicalRecords = () => {
       setLoading(true);
       const response = await medicalRecordsAPI.getRecords();
       
+      console.log('🔍 Fetch Medical Records Response:', response.data);
+      
       if (response.data.success) {
         const recordsList = response.data.data.records || [];
+        console.log('📋 Records List:', recordsList);
+        console.log('📋 First Record Sample:', recordsList[0]);
+        if (recordsList[0]) {
+          console.log('   - treatmentPlan:', recordsList[0].treatmentPlan);
+          console.log('   - labTests:', recordsList[0].labTests);
+          console.log('   - prescriptions:', recordsList[0].prescriptions);
+        }
         setRecords(recordsList);
         setFilteredRecords(recordsList);
       }
@@ -124,6 +133,10 @@ const MedicalRecords = () => {
   };
 
   const handleViewRecord = (record) => {
+    console.log('Selected record data:', record);
+    console.log('Treatment Plan:', record.treatmentPlan);
+    console.log('Lab Tests:', record.labTests);
+    console.log('Prescriptions:', record.prescriptions);
     setSelectedRecord(record);
     setShowModal(true);
   };
@@ -562,6 +575,14 @@ const MedicalRecords = () => {
                                 <DocumentTextIcon className="w-4 h-4" />
                                 <span className="capitalize">{record.recordType?.replace('-', ' ')}</span>
                               </div>
+                              {record.documents && record.documents.length > 0 && (
+                                <div className="flex items-center space-x-2 bg-green-100 px-2 py-1 rounded-full">
+                                  <svg className="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8 4a3 3 0 00-3 3v4a5 5 0 0010 0V7a1 1 0 112 0v4a7 7 0 11-14 0V7a5 5 0 0110 0v4a3 3 0 11-6 0V7a1 1 0 012 0v4a1 1 0 102 0V7a3 3 0 00-3-3z" clipRule="evenodd" />
+                                  </svg>
+                                  <span className="text-green-700 font-medium">{record.documents.length} document(s)</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -646,7 +667,12 @@ const MedicalRecords = () => {
                   <p className="text-gray-900">{selectedRecord.diagnosis.primary}</p>
                   {selectedRecord.diagnosis.severity && (
                     <p className="text-sm text-gray-600 mt-2">
-                      Severity: <span className="font-medium">{selectedRecord.diagnosis.severity}</span>
+                      Severity: <span className={`font-semibold px-2 py-1 rounded ${
+                        selectedRecord.diagnosis.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                        selectedRecord.diagnosis.severity === 'severe' ? 'bg-orange-100 text-orange-700' :
+                        selectedRecord.diagnosis.severity === 'moderate' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-green-100 text-green-700'
+                      }`}>{selectedRecord.diagnosis.severity}</span>
                     </p>
                   )}
                   {selectedRecord.diagnosis.secondary && selectedRecord.diagnosis.secondary.length > 0 && (
@@ -659,6 +685,40 @@ const MedicalRecords = () => {
                       </ul>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Treatment Plan - Shows description for treatment-plan record type */}
+              {(selectedRecord.treatmentPlan || (selectedRecord.recordType === 'treatment-plan' && selectedRecord.description)) && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <svg className="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-sm font-bold text-blue-900">📋 Treatment Plan</p>
+                  </div>
+                  <div className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap bg-white rounded-lg p-3 border border-blue-200">
+                    {selectedRecord.treatmentPlan || selectedRecord.description}
+                  </div>
+                </div>
+              )}
+
+              {/* Lab Tests Ordered - Added to match receptionist view */}
+              {selectedRecord.labTests && selectedRecord.labTests.length > 0 && (
+                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <svg className="w-5 h-5 text-orange-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                    </svg>
+                    <p className="text-sm font-bold text-orange-900">Lab Tests Ordered ({selectedRecord.labTests.length})</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedRecord.labTests.map((test, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-white border border-orange-300 text-orange-800 rounded-lg text-sm font-medium">
+                        🧪 {test.testName || test}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -690,6 +750,40 @@ const MedicalRecords = () => {
                 </div>
               )}
 
+              {/* Prescriptions - Added to match receptionist view */}
+              {selectedRecord.prescriptions && selectedRecord.prescriptions.length > 0 && (
+                <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <svg className="w-5 h-5 text-purple-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <p className="text-sm font-bold text-purple-900">Prescriptions ({selectedRecord.prescriptions.length})</p>
+                  </div>
+                  <div className="space-y-2">
+                    {selectedRecord.prescriptions.map((rx, index) => (
+                      <div key={index} className="bg-white border border-purple-200 rounded-lg p-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-semibold text-gray-900 mb-1">💊 {rx.medication}</p>
+                            <div className="text-sm text-gray-700 space-y-1">
+                              <p><span className="font-medium">Dosage:</span> {rx.dosage}</p>
+                              <p><span className="font-medium">Frequency:</span> {rx.frequency}</p>
+                              {rx.duration && <p><span className="font-medium">Duration:</span> {rx.duration}</p>}
+                              {rx.instructions && <p><span className="font-medium">Instructions:</span> {rx.instructions}</p>}
+                            </div>
+                          </div>
+                          {rx.refills !== undefined && (
+                            <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full font-semibold">
+                              {rx.refills} refills
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {selectedRecord.testResults && (
                 <div>
                   <p className="text-sm text-gray-600 mb-1">Test Results</p>
@@ -713,6 +807,54 @@ const MedicalRecords = () => {
                   {selectedRecord.followUpInstructions && (
                     <p className="text-sm text-blue-700 mt-1">{selectedRecord.followUpInstructions}</p>
                   )}
+                </div>
+              )}
+
+              {/* Uploaded Lab Test Documents */}
+              {selectedRecord.documents && selectedRecord.documents.length > 0 && (
+                <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
+                  <div className="flex items-center space-x-2 mb-3">
+                    <DocumentTextIcon className="w-5 h-5 text-green-700" />
+                    <p className="text-sm font-bold text-green-900">
+                      Lab Test Results & Medical Documents ({selectedRecord.documents.length})
+                    </p>
+                  </div>
+                  <p className="text-xs text-green-700 mb-3">
+                    These documents were uploaded by hospital reception staff
+                  </p>
+                  <div className="space-y-2">
+                    {selectedRecord.documents.map((doc, index) => (
+                      <a
+                        key={index}
+                        href={`${process.env.REACT_APP_API_URL?.replace('/api', '')}${doc.fileUrl}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 bg-white border border-green-200 rounded-lg hover:bg-green-50 hover:shadow-md transition-all group"
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <DocumentTextIcon className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">{doc.fileName}</p>
+                            <div className="flex items-center space-x-3 text-xs text-gray-500 mt-1">
+                              <span>{(doc.fileSize / 1024).toFixed(2)} KB</span>
+                              <span>•</span>
+                              <span>{new Date(doc.uploadedAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs text-green-600 font-medium group-hover:underline">
+                            View/Download
+                          </span>
+                          <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
