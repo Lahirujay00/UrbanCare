@@ -39,10 +39,20 @@ import PatientVerification from './pages/staff/PatientVerification';
 // Manager Pages
 import ManagerDashboard from './pages/manager/DashboardFull';
 import Reports from './pages/manager/Reports';
-import UserManagement from './pages/manager/UserManagement';
 
 // Shared Pages
 import AppointmentDetails from './pages/AppointmentDetails';
+
+// Suppress React DevTools warning in development
+if (process.env.NODE_ENV === 'development') {
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    if (args[0]?.includes?.('Download the React DevTools')) {
+      return;
+    }
+    originalWarn.apply(console, args);
+  };
+}
 
 // Create a client
 const queryClient = new QueryClient({
@@ -97,13 +107,13 @@ const PublicRoute = ({ children }) => {
 };
 
 // Layout Component
-const Layout = ({ children }) => (
+const Layout = ({ children, showFooter = true }) => (
   <div className="min-h-screen bg-gray-50 flex flex-col">
     <Navbar />
-    <main className="flex-grow container mx-auto px-4 py-8">
+    <main className={`flex-grow ${showFooter ? 'container mx-auto px-4 py-8' : ''}`}>
       {children}
     </main>
-    <Footer />
+    {showFooter && <Footer />}
   </div>
 );
 
@@ -111,7 +121,7 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <div className="App">
             <Routes>
               {/* Public Routes */}
@@ -277,7 +287,7 @@ function App() {
               {/* Manager Routes */}
               <Route path="/manager/dashboard" element={
                 <ProtectedRoute allowedRoles={['manager']}>
-                  <Layout>
+                  <Layout showFooter={false}>
                     <ManagerDashboard />
                   </Layout>
                 </ProtectedRoute>
@@ -285,16 +295,8 @@ function App() {
               
               <Route path="/manager/reports" element={
                 <ProtectedRoute allowedRoles={['manager']}>
-                  <Layout>
+                  <Layout showFooter={false}>
                     <Reports />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/manager/users" element={
-                <ProtectedRoute allowedRoles={['manager']}>
-                  <Layout>
-                    <UserManagement />
                   </Layout>
                 </ProtectedRoute>
               } />

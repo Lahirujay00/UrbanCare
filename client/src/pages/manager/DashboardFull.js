@@ -5,17 +5,19 @@ import {
   CalendarIcon,
   CurrencyDollarIcon,
   ArrowUpIcon,
-  ArrowDownIcon,
   DocumentTextIcon,
   HomeIcon,
   ShieldCheckIcon,
   BellIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
-import { reportsAPI, appointmentAPI, paymentAPI } from '../../services/api';
+import { reportsAPI, appointmentAPI } from '../../services/api';
 import ReportingDashboard from './ReportingDashboard';
 import PatientIdentityVerification from '../../components/Manager/PatientIdentityVerification';
+import PatientRecordViewer from '../../components/Manager/PatientRecordViewer';
+import PeakHoursChartDashboard from '../../components/Analytics/PeakHoursChartDashboard';
 import toast from 'react-hot-toast';
+import axios from 'axios';
 
 const ManagerDashboard = () => {
   const { user } = useAuth();
@@ -33,10 +35,13 @@ const ManagerDashboard = () => {
   });
   const [recentAppointments, setRecentAppointments] = useState([]);
   const [recentPayments, setRecentPayments] = useState([]);
+  const [usingRealData, setUsingRealData] = useState(false);
 
   const sidebarNavigation = [
     { id: 'overview', name: 'Overview', icon: HomeIcon, description: 'Dashboard summary' },
+    { id: 'peak-hours', name: 'Peak Hours Prediction', icon: ChartBarIcon, description: 'Demand forecasting' },
     { id: 'reports', name: 'Reports', icon: DocumentTextIcon, description: 'Generate reports' },
+    { id: 'patient-records', name: 'Patient Records', icon: UsersIcon, description: 'Secure record access' },
     { id: 'identity-verification', name: 'Identity Verification', icon: ShieldCheckIcon, description: 'Verify patients' }
   ];
 
@@ -47,7 +52,64 @@ const ManagerDashboard = () => {
   const fetchManagerData = async () => {
     try {
       setLoading(true);
+      const token = localStorage.getItem('token');
       
+      // Use manager-specific dashboard overview endpoint
+      try {
+        const managerRes = await axios.get('/api/manager/dashboard/overview', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        if (managerRes.data.success) {
+          const data = managerRes.data.data;
+          
+          // Set comprehensive stats from manager API
+          setStats({
+            totalPatients: data.totalUsers || 0,
+            totalDoctors: data.totalDoctors || 0,
+            appointmentsToday: data.todayAppointments || 0,
+            revenue: data.totalRevenue || 0,
+            pendingAppointments: data.pendingAppointments || 0,
+            completedAppointments: data.completedAppointments || 0
+          });
+          
+          // Set recent data
+          setRecentAppointments(data.recentAppointments?.slice(0, 5) || []);
+          setRecentPayments(data.recentPayments?.slice(0, 5) || []);
+          
+          console.log('Manager dashboard data loaded successfully:', data);
+          setUsingRealData(true);
+        }
+      } catch (managerError) {
+        console.warn('Manager API not available, using fallback APIs');
+        setUsingRealData(false);
+        
+        // Fallback to individual API calls
+        await fetchFallbackData(token);
+      }
+      
+    } catch (error) {
+      console.error('Error fetching manager data:', error);
+      toast.error('Failed to load dashboard data');
+      
+      // Set default values to prevent undefined errors
+      setStats({
+        totalPatients: 0,
+        totalDoctors: 0,
+        appointmentsToday: 0,
+        revenue: 0,
+        pendingAppointments: 0,
+        completedAppointments: 0
+      });
+      setRecentAppointments([]);
+      setRecentPayments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFallbackData = async (token) => {
+    try {
       // Fetch dashboard stats
       const dashboardRes = await reportsAPI.getDashboardStats();
       if (dashboardRes.data.success) {
@@ -81,26 +143,28 @@ const ManagerDashboard = () => {
       }
 
       // Fetch recent payments
-      const paymentsRes = await paymentAPI.getPaymentHistory();
-      if (paymentsRes.data.success) {
-        const payments = paymentsRes.data.data.payments || [];
-        setRecentPayments(payments.slice(0, 5));
-        
-        const totalRevenue = payments
-          .filter(p => p.status === 'completed')
-          .reduce((sum, p) => sum + (p.amount || 0), 0);
-        
-        setStats(prev => ({
-          ...prev,
-          revenue: totalRevenue
-        }));
+      try {
+        const paymentsRes = await axios.get('/api/payments/stats/overview', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (paymentsRes.data.success) {
+          const payments = paymentsRes.data.data.recentPayments || [];
+          setRecentPayments(payments.slice(0, 5));
+          
+          const totalRevenue = paymentsRes.data.data.totalRevenue || 0;
+          
+          setStats(prev => ({
+            ...prev,
+            revenue: totalRevenue
+          }));
+        }
+      } catch (paymentError) {
+        console.warn('Payment data not available');
+        setStats(prev => ({ ...prev, revenue: 0 }));
+        setRecentPayments([]);
       }
-      
-    } catch (error) {
-      console.error('Error fetching manager data:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
+    } catch (fallbackError) {
+      console.error('Fallback data fetch failed:', fallbackError);
     }
   };
 
@@ -211,11 +275,17 @@ const ManagerDashboard = () => {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {sidebarNavigation.find(nav => nav.id === activeTab)?.name || 'Overview'} 📊
+                  {sidebarNavigation.find(nav => nav.id === activeTab)?.name || 'Overview'}
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">
                   {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
                 </p>
+                <div className="flex items-center mt-2">
+                  <div className={`w-2 h-2 rounded-full mr-2 ${usingRealData ? 'bg-green-500' : 'bg-orange-500'}`}></div>
+                  <span className={`text-xs ${usingRealData ? 'text-green-600' : 'text-orange-600'}`}>
+                    {usingRealData ? 'Real-time Data Connected' : 'Using Fallback Data'}
+                  </span>
+                </div>
               </div>
               <div className="flex items-center space-x-4">
                 <button className="p-2 rounded-lg hover:bg-gray-100 relative">
@@ -405,9 +475,21 @@ const ManagerDashboard = () => {
       </>
         )}
 
+        {activeTab === 'peak-hours' && (
+          <div>
+            <PeakHoursChartDashboard embedded={true} />
+          </div>
+        )}
+
         {activeTab === 'reports' && (
           <div>
             <ReportingDashboard />
+          </div>
+        )}
+
+        {activeTab === 'patient-records' && (
+          <div>
+            <PatientRecordViewer />
           </div>
         )}
 
