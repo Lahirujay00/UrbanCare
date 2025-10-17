@@ -171,7 +171,7 @@ const medicalRecordSchema = new mongoose.Schema({
     },
     action: {
       type: String,
-      enum: ['view', 'edit', 'delete']
+      enum: ['create', 'view', 'edit', 'delete']
     },
     ipAddress: String
   }],
