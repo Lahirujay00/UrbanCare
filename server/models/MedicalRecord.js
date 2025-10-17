@@ -212,6 +212,19 @@ medicalRecordSchema.index({ appointment: 1 });
 medicalRecordSchema.index({ doctor: 1, createdAt: -1 });
 medicalRecordSchema.index({ status: 1 });
 
+// Compound unique index to ensure one treatment plan per appointment
+medicalRecordSchema.index(
+  { appointment: 1, recordType: 1, status: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      recordType: 'treatment-plan', 
+      status: 'active',
+      appointment: { $exists: true, $ne: null }
+    }
+  }
+);
+
 // Text index for search
 medicalRecordSchema.index({
   title: 'text',
