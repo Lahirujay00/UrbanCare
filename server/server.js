@@ -19,6 +19,9 @@ const userRoutes = require('./routes/users');
 const appointmentRoutes = require('./routes/appointments');
 const medicalRecordRoutes = require('./routes/medicalRecords');
 const reportRoutes = require('./routes/reports');
+const generatedReportRoutes = require('./routes/generatedReports');
+const reportGenerationRoutes = require('./routes/reportGeneration');
+const managerRoutes = require('./routes/manager');
 const paymentRoutes = require('./routes/payments');
 const healthCardRoutes = require('./routes/healthCards');
 const documentRoutes = require('./routes/documents');
@@ -50,7 +53,7 @@ mongoose.connect(process.env.MONGODB_URI, {
   useUnifiedTopology: true,
 })
 .then(async () => {
-  console.log('✅ MongoDB connected successfully');
+  console.log('MongoDB connected successfully');
 
   // Auto-setup healthcare manager user if it doesn't exist
   try {
@@ -77,15 +80,15 @@ mongoose.connect(process.env.MONGODB_URI, {
       });
 
       await managerUser.save();
-      console.log('✅ Default healthcare manager user created automatically');
-      console.log('📧 Email: manager@urbancare.com');
-      console.log('🔑 Password: Manager123!');
+      console.log('Default healthcare manager user created automatically');
+      console.log('Email: manager@urbancare.com');
+      console.log('Password: Manager123!');
     }
   } catch (error) {
-    console.error('❌ Error auto-creating healthcare manager user:', error.message);
+    console.error('Error auto-creating healthcare manager user:', error.message);
   }
 })
-.catch((err) => console.error('❌ MongoDB connection error:', err));
+.catch((err) => console.error('MongoDB connection error:', err));
 
 // Security middleware
 app.use(helmet({
@@ -177,6 +180,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/appointments', appointmentRoutes);
 app.use('/api/medical-records', medicalRecordRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/generated-reports', generatedReportRoutes);
+app.use('/api/report-generation', reportGenerationRoutes);
+app.use('/api/manager', managerRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/health-cards', healthCardRoutes);
 app.use('/api/documents', documentRoutes);
@@ -186,10 +192,10 @@ app.use('/api/doctor', doctorRoutes);
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log(`👤 User connected: ${socket.id}`);
+  console.log(`User connected: ${socket.id}`);
   socket.on('join', (userId) => {
     socket.join(userId);
-    console.log(`👤 User ${userId} joined their room`);
+    console.log(`User ${userId} joined their room`);
   });
 
   // Handle appointment notifications
@@ -203,7 +209,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('disconnect', () => {
-    console.log(`👤 User disconnected: ${socket.id}`);
+    console.log(`User disconnected: ${socket.id}`);
   });
 });
 
@@ -214,14 +220,14 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  console.log(`🚀 Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`🔗 API Base URL: http://localhost:${PORT}/api`);
-  console.log(`📊 Health Check: http://localhost:${PORT}/health`);
+  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+  console.log(`API Base URL: http://localhost:${PORT}/api`);
+  console.log(`Health Check: http://localhost:${PORT}/health`);
 });
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
-  console.log(`❌ Unhandled Rejection: ${err.message}`);
+  console.log(`Unhandled Rejection: ${err.message}`);
   server.close(() => {
     process.exit(1);
   });
@@ -229,7 +235,7 @@ process.on('unhandledRejection', (err, promise) => {
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  console.log(`❌ Uncaught Exception: ${err.message}`);
+  console.log(`Uncaught Exception: ${err.message}`);
   process.exit(1);
 });
 

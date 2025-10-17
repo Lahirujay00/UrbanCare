@@ -65,7 +65,6 @@ const Navbar = () => {
     { name: 'Home', href: '/' },
     { name: 'Dashboard', href: '/manager/dashboard' },
     { name: 'Reports', href: '/manager/reports' },
-    { name: 'User Management', href: '/manager/users' },
     { name: 'About', href: '/about' },
   ];
 
