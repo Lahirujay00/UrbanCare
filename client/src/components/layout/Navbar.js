@@ -20,12 +20,13 @@ const Navbar = () => {
     navigate('/');
   };
 
-  const getRoleBasedDashboard = (role) => {
+  const getDashboardRoute = (role) => {
     const routes = {
       patient: '/dashboard',
       doctor: '/doctor/dashboard',
       staff: '/staff/dashboard',
-      manager: '/manager/dashboard'
+      manager: '/manager/dashboard',
+      receptionist: '/receptionist/dashboard'
     };
     return routes[role] || '/dashboard';
   };
@@ -68,6 +69,12 @@ const Navbar = () => {
     { name: 'About', href: '/about' },
   ];
 
+  const receptionistLinks = [
+    { name: 'Home', href: '/' },
+    { name: 'Dashboard', href: '/receptionist/dashboard' },
+    { name: 'About', href: '/about' },
+  ];
+
   const getNavigationLinks = () => {
     if (!user) return publicLinks;
     
@@ -76,6 +83,7 @@ const Navbar = () => {
       case 'doctor': return doctorLinks;
       case 'staff': return staffLinks;
       case 'manager': return managerLinks;
+      case 'receptionist': return receptionistLinks;
       default: return publicLinks;
     }
   };
@@ -141,7 +149,7 @@ const Navbar = () => {
                   {/* Dropdown Menu */}
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-all duration-200">
                     <Link
-                      to={getRoleBasedDashboard(user.role)}
+                      to={getDashboardRoute(user.role)}
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Dashboard
