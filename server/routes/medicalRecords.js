@@ -135,7 +135,7 @@ router.post('/',
   authorize('doctor', 'staff', 'admin'),
   [
     body('patient').isMongoId().withMessage('Valid patient ID is required'),
-    body('recordType').isIn(['diagnosis', 'prescription', 'lab-result', 'imaging', 'surgery', 'vaccination', 'consultation', 'other']),
+    body('recordType').isIn(['diagnosis', 'prescription', 'lab-result', 'imaging', 'surgery', 'vaccination', 'consultation', 'treatment-plan', 'other']),
     body('title').isLength({ min: 5, max: 200 }).withMessage('Title must be between 5-200 characters'),
     body('description').isLength({ min: 10, max: 2000 }).withMessage('Description must be between 10-2000 characters')
   ],
@@ -159,6 +159,23 @@ router.post('/',
           success: false,
           message: 'Patient not found'
         });
+      }
+      
+      // For treatment plans, check if appointment already has one
+      if (recordType === 'treatment-plan' && appointment) {
+        const existingTreatmentPlan = await MedicalRecord.findOne({
+          appointment: appointment,
+          recordType: 'treatment-plan',
+          status: 'active'
+        });
+        
+        if (existingTreatmentPlan) {
+          return res.status(400).json({
+            success: false,
+            message: 'This appointment already has a treatment plan. Each appointment can only have one treatment plan.',
+            code: 'DUPLICATE_TREATMENT_PLAN'
+          });
+        }
       }
       
       // Verify doctor if provided

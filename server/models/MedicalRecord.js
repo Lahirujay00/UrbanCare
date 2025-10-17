@@ -12,7 +12,7 @@ const medicalRecordSchema = new mongoose.Schema({
   // Record Type
   recordType: {
     type: String,
-    enum: ['diagnosis', 'prescription', 'lab-result', 'imaging', 'surgery', 'vaccination', 'consultation', 'other'],
+    enum: ['diagnosis', 'prescription', 'lab-result', 'imaging', 'surgery', 'vaccination', 'consultation', 'treatment-plan', 'other'],
     required: [true, 'Record type is required']
   },
   
@@ -171,7 +171,7 @@ const medicalRecordSchema = new mongoose.Schema({
     },
     action: {
       type: String,
-      enum: ['view', 'edit', 'delete']
+      enum: ['create', 'view', 'edit', 'delete']
     },
     ipAddress: String
   }],
@@ -211,6 +211,19 @@ medicalRecordSchema.index({ recordType: 1, createdAt: -1 });
 medicalRecordSchema.index({ appointment: 1 });
 medicalRecordSchema.index({ doctor: 1, createdAt: -1 });
 medicalRecordSchema.index({ status: 1 });
+
+// Compound unique index to ensure one treatment plan per appointment
+medicalRecordSchema.index(
+  { appointment: 1, recordType: 1, status: 1 }, 
+  { 
+    unique: true, 
+    partialFilterExpression: { 
+      recordType: 'treatment-plan', 
+      status: 'active',
+      appointment: { $exists: true, $ne: null }
+    }
+  }
+);
 
 // Text index for search
 medicalRecordSchema.index({
