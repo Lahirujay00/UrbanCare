@@ -243,11 +243,15 @@ const userSchema = new mongoose.Schema({
   verifiedAt: {
     type: Date
   },
-  healthCardNumber: {
-    type: String
+  nicDocument: {
+    filename: String,
+    path: String,
+    uploadedAt: Date,
+    mimetype: String
   },
-  healthCardVersion: {
-    type: String
+  nicNumber: {
+    type: String,
+    sparse: true
   },
   
   // Security
@@ -351,16 +355,8 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Pre-save middleware to generate digital health card ID for patients
-userSchema.pre('save', function(next) {
-  if (this.role === 'patient' && !this.digitalHealthCardId) {
-    // Generate unique digital health card ID
-    const timestamp = Date.now().toString(36);
-    const randomStr = Math.random().toString(36).substring(2, 8);
-    this.digitalHealthCardId = `HC-${timestamp}-${randomStr}`.toUpperCase();
-  }
-  next();
-});
+// Note: digitalHealthCardId is set when a HealthCard is created for the patient
+// It uses the HealthCard's cardNumber (format: HC2025XXXXXX)
 
 // Instance method to compare password
 userSchema.methods.comparePassword = async function(candidatePassword) {

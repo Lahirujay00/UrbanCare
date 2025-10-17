@@ -14,37 +14,63 @@ router.get('/', auth, async (req, res) => {
   try {
     let query = {};
     
-    // Filter based on user role
-    if (req.user.role === 'patient') {
-      query.patient = req.user.id;
-    } else if (req.user.role === 'doctor') {
-      query.doctor = req.user.id;
-    }
-    
     // Additional filters
     const { status, date, doctorId, patientId } = req.query;
     
-    if (status) {
+    console.log('Get appointments - User:', req.user.role, 'Query params:', { status, date, doctorId, patientId });
+    
+    // Filter based on user role
+    if (req.user.role === 'patient') {
+      // If patient is checking availability (doctorId + date provided), show all appointments for that doctor
+      // This allows patients to see which slots are already booked
+      if (doctorId && date) {
+        query.doctor = doctorId;
+        const startDate = new Date(date);
+        const endDate = new Date(date);
+        endDate.setDate(endDate.getDate() + 1);
+        query.appointmentDate = { $gte: startDate, $lt: endDate };
+        // Only show booked slots (pending-payment, scheduled, confirmed)
+        if (status) {
+          const statusArray = status.split(',');
+          query.status = { $in: statusArray };
+        }
+      } else {
+        // Otherwise, only show patient's own appointments
+        query.patient = req.user.id;
+      }
+    } else if (req.user.role === 'doctor') {
+      query.doctor = req.user.id;
+    } else {
+      // Staff, Manager, Admin can query any appointments
+      if (doctorId) {
+        query.doctor = doctorId;
+      }
+      if (patientId) {
+        query.patient = patientId;
+      }
+    }
+    
+    // Apply status filter if not already set
+    if (status && !query.status) {
       const statusArray = status.split(',');
       query.status = { $in: statusArray };
     }
-    if (date) {
+    
+    // Apply date filter if not already set
+    if (date && !query.appointmentDate) {
       const startDate = new Date(date);
       const endDate = new Date(date);
       endDate.setDate(endDate.getDate() + 1);
       query.appointmentDate = { $gte: startDate, $lt: endDate };
-    }
-    if (doctorId && ['staff', 'manager', 'admin'].includes(req.user.role)) {
-      query.doctor = doctorId;
-    }
-    if (patientId && ['doctor', 'staff', 'manager', 'admin'].includes(req.user.role)) {
-      query.patient = patientId;
     }
 
     const appointments = await Appointment.find(query)
       .populate('patient', 'firstName lastName email phone digitalHealthCardId')
       .populate('doctor', 'firstName lastName specialization department consultationFee')
       .sort({ appointmentDate: 1, appointmentTime: 1 });
+
+    console.log('Query built:', JSON.stringify(query));
+    console.log('Found appointments:', appointments.length);
 
     res.json({
       success: true,

@@ -199,9 +199,22 @@ const AppointmentBooking = () => {
         const slots = [];
         const startHour = 9; // 9 AM
         const endHour = 17; // 5 PM
+        const now = new Date();
+        const isToday = selectedDate === now.toISOString().split('T')[0];
         
         for (let hour = startHour; hour < endHour; hour++) {
           for (let minute = 0; minute < 60; minute += 15) {
+            // Skip past time slots if the selected date is today
+            if (isToday) {
+              const slotTime = new Date();
+              slotTime.setHours(hour, minute, 0, 0);
+              
+              // Only add slots that are at least 30 minutes in the future
+              if (slotTime <= new Date(now.getTime() + 30 * 60000)) {
+                continue;
+              }
+            }
+            
             const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
             slots.push(timeString);
           }
@@ -221,12 +234,12 @@ const AppointmentBooking = () => {
         doctorSlots = generateTimeSlots();
       }
       
-      // Check which slots are already booked
+      // Check which slots are already booked (including pending payments)
       try {
         const response = await appointmentAPI.getAppointments({
           doctorId: selectedDoctor._id,
           date: selectedDate,
-          status: 'scheduled,confirmed'
+          status: 'pending-payment,scheduled,confirmed'
         });
         
         if (response.data.success) {

@@ -12,7 +12,7 @@ const medicalRecordSchema = new mongoose.Schema({
   // Record Type
   recordType: {
     type: String,
-    enum: ['diagnosis', 'prescription', 'lab-result', 'imaging', 'surgery', 'vaccination', 'consultation', 'other'],
+    enum: ['diagnosis', 'prescription', 'lab-result', 'imaging', 'surgery', 'vaccination', 'consultation', 'treatment-plan', 'other'],
     required: [true, 'Record type is required']
   },
   
@@ -171,7 +171,7 @@ const medicalRecordSchema = new mongoose.Schema({
     },
     action: {
       type: String,
-      enum: ['view', 'edit', 'delete']
+      enum: ['create', 'view', 'edit', 'delete']
     },
     ipAddress: String
   }],

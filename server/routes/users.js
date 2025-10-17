@@ -1,10 +1,48 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const User = require('../models/User');
 const auth = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
 const router = express.Router();
+
+// Configure multer for NIC uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(__dirname, '../uploads/nic-documents');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const extension = path.extname(file.originalname);
+    cb(null, 'nic-' + req.user.id + '-' + uniqueSuffix + extension);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPG, PNG, and PDF are allowed.'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: fileFilter
+});
 
 // @desc    Get user profile
 // @route   GET /api/users/profile
@@ -61,6 +99,173 @@ router.put('/profile', auth, [
     res.status(500).json({
       success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// @desc    Upload NIC document for identity verification
+// @route   POST /api/users/upload-nic
+// @access  Private (Patient)
+router.post('/upload-nic', auth, upload.single('nicDocument'), async (req, res) => {
+  try {
+    console.log('NIC upload request from user:', req.user?.id, 'role:', req.user?.role);
+    console.log('File received:', req.file?.filename);
+    console.log('NIC Number:', req.body?.nicNumber);
+    
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    const { nicNumber } = req.body;
+
+    if (!nicNumber) {
+      // Delete uploaded file if NIC number is missing
+      if (fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'NIC number is required'
+      });
+    }
+
+    // Delete old NIC document if exists
+    const oldUser = await User.findById(req.user.id);
+    if (oldUser.nicDocument && oldUser.nicDocument.path) {
+      const oldPath = path.join(__dirname, '..', oldUser.nicDocument.path);
+      if (fs.existsSync(oldPath)) {
+        fs.unlinkSync(oldPath);
+      }
+    }
+
+    // Update user with NIC document info
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        nicDocument: {
+          filename: req.file.filename,
+          path: req.file.path,
+          uploadedAt: new Date(),
+          mimetype: req.file.mimetype
+        },
+        nicNumber: nicNumber,
+        identityVerificationStatus: 'pending',
+        verificationNote: ''
+      },
+      { new: true, runValidators: true }
+    );
+
+    console.log('NIC uploaded successfully for user:', user._id);
+
+    res.json({
+      success: true,
+      message: 'NIC document uploaded successfully. Awaiting verification.',
+      data: { 
+        user,
+        verificationStatus: 'pending'
+      }
+    });
+  } catch (error) {
+    console.error('Upload NIC error:', error);
+    
+    // Delete uploaded file on error
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get NIC verification status
+// @route   GET /api/users/nic-status
+// @access  Private (Patient)
+router.get('/nic-status', auth, async (req, res) => {
+  try {
+    console.log('NIC status request from user:', req.user?.id, 'role:', req.user?.role);
+    
+    const user = await User.findById(req.user.id).select('identityVerificationStatus verificationNote nicNumber nicDocument');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: {
+        status: user.identityVerificationStatus || 'unverified',
+        note: user.verificationNote || '',
+        nicNumber: user.nicNumber || '',
+        hasDocument: !!user.nicDocument
+      }
+    });
+  } catch (error) {
+    console.error('Get NIC status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get NIC document image
+// @route   GET /api/users/nic-document/:patientId
+// @access  Private (Manager, Staff)
+router.get('/nic-document/:patientId', auth, authorize('manager', 'staff'), async (req, res) => {
+  try {
+    console.log('Fetching NIC document for patient:', req.params.patientId);
+    
+    const patient = await User.findById(req.params.patientId);
+    
+    if (!patient) {
+      console.log('Patient not found');
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+    
+    if (!patient.nicDocument || !patient.nicDocument.path) {
+      console.log('NIC document not found for patient');
+      return res.status(404).json({
+        success: false,
+        message: 'NIC document not found'
+      });
+    }
+
+    console.log('Serving NIC document:', patient.nicDocument.path);
+    
+    // Check if file exists
+    if (!fs.existsSync(patient.nicDocument.path)) {
+      console.log('File does not exist at path:', patient.nicDocument.path);
+      return res.status(404).json({
+        success: false,
+        message: 'NIC document file not found'
+      });
+    }
+
+    // Set appropriate content type
+    res.setHeader('Content-Type', patient.nicDocument.mimetype || 'image/jpeg');
+    
+    // Send the file using absolute path
+    res.sendFile(path.resolve(patient.nicDocument.path));
+  } catch (error) {
+    console.error('Get NIC document error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -292,9 +497,11 @@ router.get('/patients/verification', auth, authorize('manager', 'staff'), async 
     }
 
     const patients = await User.find(filters)
-      .select('firstName lastName email phone dateOfBirth healthCardNumber healthCardVersion identityVerificationStatus verificationNote')
+      .select('firstName lastName email phone dateOfBirth nicNumber nicDocument identityVerificationStatus verificationNote verifiedBy verifiedAt')
       .sort({ createdAt: -1 });
 
+    console.log(`Found ${patients.length} patients for verification`);
+    
     res.json({
       success: true,
       count: patients.length,

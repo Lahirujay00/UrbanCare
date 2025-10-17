@@ -194,6 +194,21 @@ export const AuthProvider = ({ children }) => {
     dispatch({ type: 'UPDATE_USER', payload: userData });
   };
 
+  // Refresh user data from server
+  const refreshUser = async () => {
+    try {
+      const response = await authAPI.getMe();
+      if (response.data.success) {
+        dispatch({ type: 'UPDATE_USER', payload: response.data.data.user });
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+      return { success: false };
+    }
+  };
+
   // Forgot password
   const forgotPassword = async (email) => {
     try {
@@ -254,6 +269,7 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     updateUser,
+    refreshUser,
     forgotPassword,
     resetPassword,
     verifyEmail,

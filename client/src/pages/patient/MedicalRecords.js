@@ -26,6 +26,11 @@ const MedicalRecords = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   
+  // Server base URL for static file access (without /api)
+  const SERVER_BASE = process.env.REACT_APP_API_URL 
+    ? process.env.REACT_APP_API_URL.replace('/api', '') 
+    : 'http://localhost:5000';
+  
   const [loading, setLoading] = useState(true);
   const [records, setRecords] = useState([]);
   const [filteredRecords, setFilteredRecords] = useState([]);
@@ -72,11 +77,12 @@ const MedicalRecords = () => {
   };
 
   const fetchUploadedDocuments = async () => {
-    if (!user?._id) return;
+    if (!user?.id && !user?._id) return;
     
     try {
       setLoadingDocuments(true);
-      const response = await documentAPI.getPatientDocuments(user._id);
+      const patientId = user.id || user._id;
+      const response = await documentAPI.getPatientDocuments(patientId);
       console.log('Fetched documents response:', response.data);
       
       if (response.data.success && response.data.data) {
@@ -107,7 +113,8 @@ const MedicalRecords = () => {
     if (searchTerm.trim()) {
       filtered = filtered.filter(record =>
         record.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.diagnosis?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.diagnosis?.primary?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        record.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         record.recordType?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
@@ -450,7 +457,7 @@ const MedicalRecords = () => {
                         <div className="flex items-center space-x-2">
                           {doc.fileUrl && (
                             <a
-                              href={doc.fileUrl}
+                              href={`${SERVER_BASE}${doc.fileUrl}`}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
@@ -523,7 +530,9 @@ const MedicalRecords = () => {
                               </span>
                             </div>
                             
-                            <p className="text-gray-600 mb-3">{record.diagnosis || record.description || 'No description available'}</p>
+                            <p className="text-gray-600 mb-3">
+                              {record.diagnosis?.primary || record.description || 'No description available'}
+                            </p>
                             
                             <div className="flex items-center space-x-6 text-sm text-gray-500">
                               <div className="flex items-center space-x-2">
@@ -616,10 +625,25 @@ const MedicalRecords = () => {
                 </div>
               </div>
 
-              {selectedRecord.diagnosis && (
+              {selectedRecord.diagnosis?.primary && (
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Diagnosis</p>
-                  <p className="text-gray-900">{selectedRecord.diagnosis}</p>
+                  <p className="text-sm text-gray-600 mb-1">Primary Diagnosis</p>
+                  <p className="text-gray-900">{selectedRecord.diagnosis.primary}</p>
+                  {selectedRecord.diagnosis.severity && (
+                    <p className="text-sm text-gray-600 mt-2">
+                      Severity: <span className="font-medium">{selectedRecord.diagnosis.severity}</span>
+                    </p>
+                  )}
+                  {selectedRecord.diagnosis.secondary && selectedRecord.diagnosis.secondary.length > 0 && (
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-600 mb-1">Secondary Diagnoses:</p>
+                      <ul className="list-disc list-inside text-gray-900">
+                        {selectedRecord.diagnosis.secondary.map((sec, idx) => (
+                          <li key={idx}>{sec}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
               )}
 
