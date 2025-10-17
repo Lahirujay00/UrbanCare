@@ -13,7 +13,7 @@ import {
   ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../../services/api';
 
 const PatientIdentityVerification = () => {
   const [patients, setPatients] = useState([]);
@@ -22,15 +22,46 @@ const PatientIdentityVerification = () => {
   const [filterStatus, setFilterStatus] = useState('pending'); // pending, verified, rejected, all
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [verificationNote, setVerificationNote] = useState('');
+  const [nicImageUrl, setNicImageUrl] = useState(null);
+  const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
   useEffect(() => {
     fetchPatientsForVerification();
   }, [filterStatus]);
 
+  // Fetch NIC image when a patient is selected
+  useEffect(() => {
+    if (selectedPatient && selectedPatient.nicDocument) {
+      fetchNicImage(selectedPatient._id);
+    } else {
+      setNicImageUrl(null);
+    }
+
+    // Cleanup blob URL when component unmounts or patient changes
+    return () => {
+      if (nicImageUrl) {
+        URL.revokeObjectURL(nicImageUrl);
+      }
+    };
+  }, [selectedPatient]);
+
+  const fetchNicImage = async (patientId) => {
+    try {
+      const response = await api.get(`/users/nic-document/${patientId}`, {
+        responseType: 'blob'
+      });
+      const imageUrl = URL.createObjectURL(response.data);
+      setNicImageUrl(imageUrl);
+    } catch (error) {
+      console.error('Error fetching NIC image:', error);
+      setNicImageUrl(null);
+    }
+  };
+
   const fetchPatientsForVerification = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/users/patients/verification', {
+      const response = await api.get('/users/patients/verification', {
         params: { status: filterStatus !== 'all' ? filterStatus : undefined }
       });
       
@@ -47,7 +78,7 @@ const PatientIdentityVerification = () => {
 
   const handleVerifyIdentity = async (patientId, status, note) => {
     try {
-      const response = await axios.put(`/api/users/patients/${patientId}/verify-identity`, {
+      const response = await api.put(`/users/patients/${patientId}/verify-identity`, {
         verificationStatus: status,
         verificationNote: note
       });
@@ -71,7 +102,7 @@ const PatientIdentityVerification = () => {
       patient.firstName?.toLowerCase().includes(searchLower) ||
       patient.lastName?.toLowerCase().includes(searchLower) ||
       patient.email?.toLowerCase().includes(searchLower) ||
-      patient.healthCardNumber?.toLowerCase().includes(searchLower)
+      patient.nicNumber?.toLowerCase().includes(searchLower)
     );
   });
 
@@ -209,14 +240,20 @@ const PatientIdentityVerification = () => {
                       <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-2 text-sm">
                           <IdentificationIcon className="w-5 h-5 text-gray-500" />
-                          <span className="font-medium text-gray-700">Health Card:</span>
+                          <span className="font-medium text-gray-700">NIC Number:</span>
                           <span className="text-gray-900 font-mono">
-                            {patient.healthCardNumber || 'Not provided'}
+                            {patient.nicNumber || 'Not provided'}
                           </span>
                         </div>
-                        {patient.healthCardVersion && (
-                          <div className="mt-2 text-xs text-gray-600">
-                            Version: {patient.healthCardVersion}
+                        {patient.nicDocument && (
+                          <div className="mt-2 flex items-center space-x-2">
+                            <DocumentMagnifyingGlassIcon className="w-4 h-4 text-blue-600" />
+                            <span className="text-xs text-blue-600 font-medium">
+                              NIC Document uploaded
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(patient.nicDocument.uploadedAt).toLocaleDateString()}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -292,29 +329,72 @@ const PatientIdentityVerification = () => {
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Health Card Number:</span>
-                        <span className="font-medium font-mono">{selectedPatient.healthCardNumber || 'N/A'}</span>
+                        <span className="text-gray-600">NIC Number:</span>
+                        <span className="font-medium font-mono">{selectedPatient.nicNumber || 'N/A'}</span>
                       </div>
-                      {selectedPatient.healthCardVersion && (
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">Health Card Version:</span>
-                          <span className="font-medium">{selectedPatient.healthCardVersion}</span>
-                        </div>
-                      )}
                     </div>
                   </div>
+
+                  {/* NIC Document Preview */}
+                  {selectedPatient.nicDocument && (
+                    <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                      <h3 className="font-semibold text-gray-900 mb-3 flex items-center space-x-2">
+                        <DocumentMagnifyingGlassIcon className="w-5 h-5 text-blue-600" />
+                        <span>NIC Document</span>
+                      </h3>
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        {selectedPatient.nicDocument.mimetype?.includes('pdf') ? (
+                          <div className="text-center py-8">
+                            <DocumentMagnifyingGlassIcon className="w-16 h-16 text-gray-400 mx-auto mb-3" />
+                            <p className="text-sm text-gray-600 mb-4">PDF Document</p>
+                            <a
+                              href={`${apiBaseUrl}/users/nic-document/${selectedPatient._id}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                              View PDF Document
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            {nicImageUrl ? (
+                              <img
+                                src={nicImageUrl}
+                                alt="NIC Document"
+                                className="w-full rounded-lg border border-gray-300 max-h-96 object-contain"
+                              />
+                            ) : (
+                              <div className="text-center py-8">
+                                <div className="animate-pulse">
+                                  <div className="w-full h-64 bg-gray-200 rounded-lg"></div>
+                                  <p className="text-sm text-gray-500 mt-4">Loading image...</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-500 mt-2">
+                          Uploaded: {new Date(selectedPatient.nicDocument.uploadedAt).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          File: {selectedPatient.nicDocument.filename}
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Verification Note */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Verification Note (Optional)
+                      Verification Note {selectedPatient.nicDocument ? '(Optional)' : '(Required for rejection)'}
                     </label>
                     <textarea
                       value={verificationNote}
                       onChange={(e) => setVerificationNote(e.target.value)}
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Add any notes about this verification..."
+                      placeholder="Add any notes about this verification (e.g., document unclear, please re-upload)..."
                     />
                   </div>
                 </div>

@@ -27,6 +27,7 @@ import ChatBot from '../../components/ChatBot/ChatBot';
 import AppointmentBooking from './AppointmentBooking';
 import MedicalRecords from './MedicalRecords';
 import ProfileEditor from './ProfileEditor';
+import NICVerification from '../../components/Patient/NICVerification';
 import toast from 'react-hot-toast';
 
 const PatientDashboardEnhanced = () => {
@@ -634,8 +635,8 @@ const PatientDashboardEnhanced = () => {
 
         {/* Profile & Verification Tab */}
         {activeTab === 'profile' && (
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100">
-            <ProfileEditor />
+          <div className="space-y-6">
+            <NICVerification />
           </div>
         )}
       </div>

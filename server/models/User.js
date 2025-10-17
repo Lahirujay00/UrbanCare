@@ -243,6 +243,16 @@ const userSchema = new mongoose.Schema({
   verifiedAt: {
     type: Date
   },
+  nicDocument: {
+    filename: String,
+    path: String,
+    uploadedAt: Date,
+    mimetype: String
+  },
+  nicNumber: {
+    type: String,
+    sparse: true
+  },
   healthCardNumber: {
     type: String
   },
