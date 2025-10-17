@@ -623,14 +623,14 @@ const Register = () => {
 
                   <div className="space-y-2">
                     <label htmlFor="consultationFee" className="text-sm font-semibold text-gray-700">
-                      Consultation Fee ($)
+                      Consultation Fee (LKR)
                     </label>
                     <input
                       id="consultationFee"
                       name="consultationFee"
                       type="number"
                       min="0"
-                      step="0.01"
+                      step="1"
                       value={formData.consultationFee}
                       onChange={handleChange}
                       className={`w-full px-4 py-3 bg-gray-50/50 border-2 rounded-xl focus:outline-none focus:bg-white transition-all duration-200 ${
@@ -638,7 +638,7 @@ const Register = () => {
                           ? 'border-red-300 focus:border-red-500' 
                           : 'border-gray-200 focus:border-blue-500'
                       }`}
-                      placeholder="150.00"
+                      placeholder="1500"
                     />
                     {errors.consultationFee && (
                       <p className="text-sm text-red-600">{errors.consultationFee}</p>

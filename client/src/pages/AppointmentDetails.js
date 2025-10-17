@@ -255,7 +255,9 @@ const AppointmentDetails = () => {
                   <CurrencyDollarIcon className="w-6 h-6 text-yellow-500" />
                   <div>
                     <p className="text-sm text-gray-600">Fee</p>
-                    <p className="font-semibold text-gray-900">${appointment.consultationFee || 'N/A'}</p>
+                    <p className="font-semibold text-gray-900">
+                      {appointment.consultationFee ? `LKR ${appointment.consultationFee.toLocaleString()}` : 'N/A'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -417,7 +419,9 @@ const AppointmentDetails = () => {
                   <div className="bg-white rounded-xl p-4 border-2 border-gray-300 shadow-sm">
                     <div className="flex justify-between items-center">
                       <span className="text-gray-700 text-sm font-medium">Consultation Fee</span>
-                      <span className="font-bold text-gray-900 text-lg">${appointment.consultationFee || 'N/A'}</span>
+                      <span className="font-bold text-gray-900 text-lg">
+                        {appointment.consultationFee ? `LKR ${appointment.consultationFee.toLocaleString()}` : 'N/A'}
+                      </span>
                     </div>
                   </div>
                   
@@ -488,7 +492,7 @@ const AppointmentDetails = () => {
               
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                 <p className="text-sm text-yellow-800">
-                  <strong>Refund Amount:</strong> ${appointment.consultationFee || 0}
+                  <strong>Refund Amount:</strong> LKR {(appointment.consultationFee || 0).toLocaleString()}
                 </p>
                 <p className="text-xs text-yellow-600 mt-1">
                   Refunds typically take 3-5 business days to process.

@@ -551,7 +551,7 @@ const AppointmentBooking = () => {
                           <div className="flex items-center space-x-2">
                             <CurrencyDollarIcon className="w-5 h-5 text-green-600" />
                             <span className="text-gray-900 font-semibold">
-                              ${doctor.consultationFee || 100}
+                              LKR {(doctor.consultationFee || 100).toLocaleString()}
                             </span>
                           </div>
                           <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium">
@@ -885,7 +885,7 @@ const AppointmentBooking = () => {
                     <div>
                       <p className="text-sm text-gray-600">Consultation Fee</p>
                       <p className="font-semibold text-gray-900">
-                        ${selectedDoctor.consultationFee || 100}
+                        LKR {(selectedDoctor.consultationFee || 100).toLocaleString()}
                       </p>
                     </div>
                   </div>
@@ -957,16 +957,16 @@ const AppointmentBooking = () => {
                 <div className="space-y-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Consultation Fee</span>
-                    <span className="font-semibold text-gray-900">${createdAppointment.consultationFee}</span>
+                    <span className="font-semibold text-gray-900">LKR {createdAppointment.consultationFee.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-gray-600">Service Charge</span>
-                    <span className="font-semibold text-gray-900">$0</span>
+                    <span className="font-semibold text-gray-900">LKR 0</span>
                   </div>
                   <div className="border-t border-gray-300 pt-3 mt-3">
                     <div className="flex justify-between items-center">
                       <span className="text-lg font-bold text-gray-900">Total Amount</span>
-                      <span className="text-2xl font-bold text-blue-600">${createdAppointment.consultationFee}</span>
+                      <span className="text-2xl font-bold text-blue-600">LKR {createdAppointment.consultationFee.toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -1200,7 +1200,7 @@ const AppointmentBooking = () => {
                       <span>
                         {paymentMethod === 'pay-later' 
                           ? 'Confirm Appointment' 
-                          : `Pay $${createdAppointment.consultationFee}`
+                          : `Pay LKR ${createdAppointment.consultationFee.toLocaleString()}`
                         }
                       </span>
                     </>

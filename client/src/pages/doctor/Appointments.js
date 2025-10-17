@@ -328,7 +328,7 @@ const Appointments = () => {
                             <div className="flex items-center space-x-2">
                               <span className="text-sm font-medium text-gray-700">Fee:</span>
                               <span className="text-sm text-green-600 font-semibold">
-                                ${appointment.consultationFee || 0}
+                                LKR {(appointment.consultationFee || 0).toLocaleString()}
                               </span>
                             </div>
                             <div className="flex items-center space-x-2">
