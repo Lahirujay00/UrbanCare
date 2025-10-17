@@ -5,19 +5,35 @@
  */
 
 const AppointmentRepository = require('../../../repositories/AppointmentRepository');
-const Appointment = require('../../../models/Appointment');
 const { ConflictError, NotFoundError } = require('../../../utils/errors');
 
-// Mock the Appointment model
+// Mock the Appointment model and Logger
 jest.mock('../../../models/Appointment');
+jest.mock('../../../utils/Logger');
 
 describe('AppointmentRepository - Data Layer Tests', () => {
   let appointmentRepository;
-  let mockAppointmentModel;
+  let mockAppointment;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAppointmentModel = Appointment;
+    
+    // Mock Appointment constructor
+    mockAppointment = {
+      save: jest.fn(),
+      populate: jest.fn().mockReturnThis(),
+      exec: jest.fn()
+    };
+    
+    const Appointment = require('../../../models/Appointment');
+    Appointment.mockImplementation(() => mockAppointment);
+    Appointment.findById = jest.fn();
+    Appointment.find = jest.fn();
+    Appointment.findOne = jest.fn();
+    Appointment.findByIdAndUpdate = jest.fn();
+    Appointment.findByIdAndDelete = jest.fn();
+    Appointment.countDocuments = jest.fn();
+    
     appointmentRepository = new AppointmentRepository();
   });
 
@@ -27,23 +43,23 @@ describe('AppointmentRepository - Data Layer Tests', () => {
       const appointmentData = testUtils.createMockAppointment();
       const mockCreatedAppointment = { ...appointmentData, _id: '507f1f77bcf86cd799439012' };
       
-      mockAppointmentModel.prototype.save = jest.fn().mockResolvedValue(mockCreatedAppointment);
+      mockAppointment.save.mockResolvedValue(mockCreatedAppointment);
 
       // Act
-      const result = await appointmentRepository.createAppointment(appointmentData);
+      const result = await appointmentRepository.create(appointmentData);
 
       // Assert
       expect(result).toEqual(mockCreatedAppointment);
-      expect(mockAppointmentModel.prototype.save).toHaveBeenCalledTimes(1);
+      expect(mockAppointment.save).toHaveBeenCalledTimes(1);
     });
 
     test('should handle database errors during creation', async () => {
       // Arrange
       const appointmentData = testUtils.createMockAppointment();
-      mockAppointmentModel.prototype.save = jest.fn().mockRejectedValue(new Error('Database error'));
+      mockAppointment.save.mockRejectedValue(new Error('Database error'));
 
       // Act & Assert
-      await expect(appointmentRepository.createAppointment(appointmentData))
+      await expect(appointmentRepository.create(appointmentData))
         .rejects
         .toThrow('Database error');
     });
@@ -53,10 +69,10 @@ describe('AppointmentRepository - Data Layer Tests', () => {
       const appointmentData = testUtils.createMockAppointment();
       const duplicateError = new Error('Duplicate key');
       duplicateError.code = 11000;
-      mockAppointmentModel.prototype.save = jest.fn().mockRejectedValue(duplicateError);
+      mockAppointment.save.mockRejectedValue(duplicateError);
 
       // Act & Assert
-      await expect(appointmentRepository.createAppointment(appointmentData))
+      await expect(appointmentRepository.create(appointmentData))
         .rejects
         .toThrow('Duplicate key');
     });
@@ -79,8 +95,9 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(mockAppointments)
       };
 
-      mockAppointmentModel.find = jest.fn().mockReturnValue(mockQuery);
-      mockAppointmentModel.countDocuments = jest.fn().mockResolvedValue(2);
+      const Appointment = require('../../../models/Appointment');
+      Appointment.find.mockReturnValue(mockQuery);
+      Appointment.countDocuments.mockResolvedValue(2);
 
       // Act
       const result = await appointmentRepository.findByPatientId(patientId);
@@ -88,7 +105,7 @@ describe('AppointmentRepository - Data Layer Tests', () => {
       // Assert
       expect(result.data).toEqual(mockAppointments);
       expect(result.pagination.total).toBe(2);
-      expect(mockAppointmentModel.find).toHaveBeenCalledWith({ patient: patientId });
+      expect(Appointment.find).toHaveBeenCalledWith({ patient: patientId });
     });
 
     test('should return empty array for patient with no appointments', async () => {
@@ -103,8 +120,8 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue([])
       };
 
-      mockAppointmentModel.find = jest.fn().mockReturnValue(mockQuery);
-      mockAppointmentModel.countDocuments = jest.fn().mockResolvedValue(0);
+      Appointment.find = jest.fn().mockReturnValue(mockQuery);
+      Appointment.countDocuments = jest.fn().mockResolvedValue(0);
 
       // Act
       const result = await appointmentRepository.findByPatientId(patientId);
@@ -126,7 +143,7 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockRejectedValue(new Error('Invalid ObjectId'))
       };
 
-      mockAppointmentModel.find = jest.fn().mockReturnValue(mockQuery);
+      Appointment.find = jest.fn().mockReturnValue(mockQuery);
 
       // Act & Assert
       await expect(appointmentRepository.findByPatientId(invalidPatientId))
@@ -146,7 +163,8 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(null) // No conflicting appointment
       };
 
-      mockAppointmentModel.findOne = jest.fn().mockReturnValue(mockQuery);
+      const Appointment = require('../../../models/Appointment');
+      Appointment.findOne.mockReturnValue(mockQuery);
 
       // Act & Assert
       await expect(appointmentRepository.checkSchedulingConflicts(doctorId, appointmentDate, duration))
@@ -165,7 +183,7 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(conflictingAppointment)
       };
 
-      mockAppointmentModel.findOne = jest.fn().mockReturnValue(mockQuery);
+      Appointment.findOne = jest.fn().mockReturnValue(mockQuery);
 
       // Act & Assert
       await expect(appointmentRepository.checkSchedulingConflicts(doctorId, appointmentDate, duration))
@@ -190,7 +208,7 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(existingAppointment)
       };
 
-      mockAppointmentModel.findOne = jest.fn().mockReturnValue(mockQuery);
+      Appointment.findOne = jest.fn().mockReturnValue(mockQuery);
 
       // Act & Assert
       await expect(appointmentRepository.checkSchedulingConflicts(doctorId, appointmentDate, duration))
@@ -209,13 +227,13 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(null)
       };
 
-      mockAppointmentModel.findOne = jest.fn().mockReturnValue(mockQuery);
+      Appointment.findOne = jest.fn().mockReturnValue(mockQuery);
 
       // Act
       await appointmentRepository.checkSchedulingConflicts(doctorId, appointmentDate, duration, excludeAppointmentId);
 
       // Assert
-      expect(mockAppointmentModel.findOne).toHaveBeenCalledWith(
+      expect(Appointment.findOne).toHaveBeenCalledWith(
         expect.objectContaining({
           doctor: doctorId,
           _id: { $ne: excludeAppointmentId }
@@ -240,14 +258,14 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(updatedAppointment)
       };
 
-      mockAppointmentModel.findByIdAndUpdate = jest.fn().mockReturnValue(mockQuery);
+      Appointment.findByIdAndUpdate = jest.fn().mockReturnValue(mockQuery);
 
       // Act
       const result = await appointmentRepository.updateStatus(appointmentId, newStatus);
 
       // Assert
       expect(result).toEqual(updatedAppointment);
-      expect(mockAppointmentModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      expect(Appointment.findByIdAndUpdate).toHaveBeenCalledWith(
         appointmentId,
         expect.objectContaining({
           status: newStatus,
@@ -267,7 +285,7 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(null)
       };
 
-      mockAppointmentModel.findByIdAndUpdate = jest.fn().mockReturnValue(mockQuery);
+      Appointment.findByIdAndUpdate = jest.fn().mockReturnValue(mockQuery);
 
       // Act
       const result = await appointmentRepository.updateStatus(appointmentId, newStatus);
@@ -294,14 +312,14 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(cancelledAppointment)
       };
 
-      mockAppointmentModel.findByIdAndUpdate = jest.fn().mockReturnValue(mockQuery);
+      Appointment.findByIdAndUpdate = jest.fn().mockReturnValue(mockQuery);
 
       // Act
       const result = await appointmentRepository.cancelAppointment(appointmentId, cancellationReason);
 
       // Assert
       expect(result).toEqual(cancelledAppointment);
-      expect(mockAppointmentModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      expect(Appointment.findByIdAndUpdate).toHaveBeenCalledWith(
         appointmentId,
         expect.objectContaining({
           status: 'cancelled',
@@ -336,15 +354,15 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(mockAppointments)
       };
 
-      mockAppointmentModel.find = jest.fn().mockReturnValue(mockQuery);
-      mockAppointmentModel.countDocuments = jest.fn().mockResolvedValue(1);
+      Appointment.find = jest.fn().mockReturnValue(mockQuery);
+      Appointment.countDocuments = jest.fn().mockResolvedValue(1);
 
       // Act
       const result = await appointmentRepository.getUpcomingAppointments(patientId, limit);
 
       // Assert
       expect(result).toEqual(mockAppointments);
-      expect(mockAppointmentModel.find).toHaveBeenCalledWith(
+      expect(Appointment.find).toHaveBeenCalledWith(
         expect.objectContaining({
           patient: patientId,
           appointmentDate: { $gte: expect.any(Date) },
@@ -366,8 +384,8 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue([])
       };
 
-      mockAppointmentModel.find = jest.fn().mockReturnValue(mockQuery);
-      mockAppointmentModel.countDocuments = jest.fn().mockResolvedValue(0);
+      Appointment.find = jest.fn().mockReturnValue(mockQuery);
+      Appointment.countDocuments = jest.fn().mockResolvedValue(0);
 
       // Act
       const result = await appointmentRepository.getUpcomingAppointments(patientId, limit);
@@ -390,19 +408,19 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         ]
       }];
 
-      mockAppointmentModel.aggregate = jest.fn().mockResolvedValue(mockStats);
+      Appointment.aggregate = jest.fn().mockResolvedValue(mockStats);
 
       // Act
       const result = await appointmentRepository.getAppointmentStatistics();
 
       // Assert
       expect(result).toEqual(mockStats[0]);
-      expect(mockAppointmentModel.aggregate).toHaveBeenCalledWith(expect.any(Array));
+      expect(Appointment.aggregate).toHaveBeenCalledWith(expect.any(Array));
     });
 
     test('should return default stats when no data', async () => {
       // Arrange
-      mockAppointmentModel.aggregate = jest.fn().mockResolvedValue([]);
+      Appointment.aggregate = jest.fn().mockResolvedValue([]);
 
       // Act
       const result = await appointmentRepository.getAppointmentStatistics();
@@ -419,7 +437,7 @@ describe('AppointmentRepository - Data Layer Tests', () => {
       const timeoutError = new Error('Network timeout');
       timeoutError.code = 'ETIMEDOUT';
       
-      mockAppointmentModel.prototype.save = jest.fn().mockRejectedValue(timeoutError);
+      Appointment.prototype.save = jest.fn().mockRejectedValue(timeoutError);
 
       // Act & Assert
       await expect(appointmentRepository.createAppointment(appointmentData))
@@ -439,7 +457,7 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockRejectedValue(new Error('Invalid query'))
       };
 
-      mockAppointmentModel.find = jest.fn().mockReturnValue(mockQuery);
+      Appointment.find = jest.fn().mockReturnValue(mockQuery);
 
       // Act & Assert
       await expect(appointmentRepository.findMany(malformedQuery))
@@ -459,8 +477,8 @@ describe('AppointmentRepository - Data Layer Tests', () => {
         exec: jest.fn().mockResolvedValue(largeResultSet)
       };
 
-      mockAppointmentModel.find = jest.fn().mockReturnValue(mockQuery);
-      mockAppointmentModel.countDocuments = jest.fn().mockResolvedValue(10000);
+      Appointment.find = jest.fn().mockReturnValue(mockQuery);
+      Appointment.countDocuments = jest.fn().mockResolvedValue(10000);
 
       // Act
       const startTime = Date.now();
