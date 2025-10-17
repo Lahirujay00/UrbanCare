@@ -41,10 +41,6 @@ import ManagerDashboard from './pages/manager/DashboardFull';
 import Reports from './pages/manager/Reports';
 import UserManagement from './pages/manager/UserManagement';
 
-// Admin Pages
-import AdminDashboard from './pages/admin/DashboardFull';
-import SystemSettings from './pages/admin/SystemSettings';
-
 // Shared Pages
 import AppointmentDetails from './pages/AppointmentDetails';
 
@@ -92,8 +88,7 @@ const PublicRoute = ({ children }) => {
       patient: '/dashboard',
       doctor: '/doctor/dashboard',
       staff: '/staff/dashboard',
-      manager: '/manager/dashboard',
-      admin: '/admin/dashboard'
+      manager: '/manager/dashboard'
     };
     return <Navigate to={roleRoutes[user.role] || '/dashboard'} replace />;
   }
@@ -214,7 +209,7 @@ function App() {
 
               {/* Shared Routes */}
               <Route path="/appointments/:id" element={
-                <ProtectedRoute allowedRoles={['patient', 'doctor', 'staff', 'manager', 'admin']}>
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'staff', 'manager']}>
                   <Layout>
                     <AppointmentDetails />
                   </Layout>
@@ -300,23 +295,6 @@ function App() {
                 <ProtectedRoute allowedRoles={['manager']}>
                   <Layout>
                     <UserManagement />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-
-              {/* Admin Routes */}
-              <Route path="/admin/dashboard" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Layout>
-                    <AdminDashboard />
-                  </Layout>
-                </ProtectedRoute>
-              } />
-              
-              <Route path="/admin/settings" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                  <Layout>
-                    <SystemSettings />
                   </Layout>
                 </ProtectedRoute>
               } />

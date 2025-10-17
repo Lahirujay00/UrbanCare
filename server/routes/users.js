@@ -279,4 +279,82 @@ router.get('/search', auth, authorize('admin', 'manager'), async (req, res) => {
   }
 });
 
+// @desc    Get patients for identity verification
+// @route   GET /api/users/patients/verification
+// @access  Private (Manager, Staff)
+router.get('/patients/verification', auth, authorize('manager', 'staff'), async (req, res) => {
+  try {
+    const { status } = req.query;
+    
+    const filters = { role: 'patient', isActive: true };
+    if (status) {
+      filters.identityVerificationStatus = status;
+    }
+
+    const patients = await User.find(filters)
+      .select('firstName lastName email phone dateOfBirth healthCardNumber healthCardVersion identityVerificationStatus verificationNote')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      count: patients.length,
+      data: patients
+    });
+  } catch (error) {
+    console.error('Get patients for verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Verify patient identity
+// @route   PUT /api/users/patients/:id/verify-identity
+// @access  Private (Manager, Staff)
+router.put('/patients/:id/verify-identity', auth, authorize('manager', 'staff'), async (req, res) => {
+  try {
+    const { verificationStatus, verificationNote } = req.body;
+
+    if (!['verified', 'rejected', 'pending'].includes(verificationStatus)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid verification status'
+      });
+    }
+
+    const patient = await User.findOneAndUpdate(
+      { _id: req.params.id, role: 'patient' },
+      {
+        identityVerificationStatus: verificationStatus,
+        verificationNote: verificationNote || '',
+        verifiedBy: req.user.id,
+        verifiedAt: new Date()
+      },
+      { new: true, runValidators: true }
+    ).select('firstName lastName email identityVerificationStatus verificationNote');
+
+    if (!patient) {
+      return res.status(404).json({
+        success: false,
+        message: 'Patient not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Patient identity ${verificationStatus} successfully`,
+      data: patient
+    });
+  } catch (error) {
+    console.error('Verify patient identity error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

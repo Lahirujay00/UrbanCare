@@ -36,7 +36,7 @@ const userSchema = new mongoose.Schema({
   // Role and Status
   role: {
     type: String,
-    enum: ['patient', 'doctor', 'staff', 'manager', 'admin'],
+    enum: ['patient', 'doctor', 'staff', 'manager'],
     default: 'patient'
   },
   isActive: {
@@ -225,6 +225,30 @@ const userSchema = new mongoose.Schema({
     weight: Number
   },
   phoneNumber: String,
+  
+  // Identity Verification (for patients)
+  identityVerificationStatus: {
+    type: String,
+    enum: ['unverified', 'pending', 'verified', 'rejected'],
+    default: 'unverified'
+  },
+  verificationNote: {
+    type: String,
+    default: ''
+  },
+  verifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  verifiedAt: {
+    type: Date
+  },
+  healthCardNumber: {
+    type: String
+  },
+  healthCardVersion: {
+    type: String
+  },
   
   // Security
   passwordResetToken: String,
