@@ -117,6 +117,7 @@ const PatientRecords = () => {
       if (response.ok) {
         const data = await response.json();
         console.log('Documents API response:', data);
+        console.log('Document URLs:', data.data?.documents?.map(doc => doc.fileUrl));
         setDocuments(data.data?.documents || []);
       } else {
         console.error('Failed to fetch patient documents:', response.status, response.statusText);
@@ -1092,16 +1093,16 @@ const PatientRecords = () => {
                 
                 {documents && documents.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {documents.map((document) => (
-                      <div key={document._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    {documents.map((doc) => (
+                      <div key={doc._id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              {document.documentType === 'lab-report' ? (
+                              {doc.documentType === 'lab-report' ? (
                                 <BeakerIcon className="w-5 h-5 text-blue-600" />
-                              ) : document.documentType === 'blood-test' ? (
+                              ) : doc.documentType === 'blood-test' ? (
                                 <BeakerIcon className="w-5 h-5 text-red-600" />
-                              ) : document.documentType === 'x-ray' ? (
+                              ) : doc.documentType === 'x-ray' ? (
                                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
@@ -1111,10 +1112,10 @@ const PatientRecords = () => {
                             </div>
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900 text-sm">
-                                {document.title}
+                                {doc.title}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {new Date(document.createdAt).toLocaleDateString()}
+                                {new Date(doc.createdAt).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
@@ -1123,70 +1124,59 @@ const PatientRecords = () => {
                         {/* Document Type Badge */}
                         <div className="mb-3">
                           <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                            document.documentType === 'lab-report' ? 'bg-blue-100 text-blue-800' :
-                            document.documentType === 'blood-test' ? 'bg-red-100 text-red-800' :
-                            document.documentType === 'x-ray' ? 'bg-gray-100 text-gray-800' :
-                            document.documentType === 'prescription' ? 'bg-green-100 text-green-800' :
+                            doc.documentType === 'lab-report' ? 'bg-blue-100 text-blue-800' :
+                            doc.documentType === 'blood-test' ? 'bg-red-100 text-red-800' :
+                            doc.documentType === 'x-ray' ? 'bg-gray-100 text-gray-800' :
+                            doc.documentType === 'prescription' ? 'bg-green-100 text-green-800' :
                             'bg-purple-100 text-purple-800'
                           }`}>
-                            {document.documentType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            {doc.documentType.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                           </span>
                         </div>
 
                         {/* Description */}
-                        {document.description && (
+                        {doc.description && (
                           <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                            {document.description}
+                            {doc.description}
                           </p>
                         )}
 
                         {/* File Info */}
                         <div className="text-xs text-gray-500 mb-3">
-                          <p>File: {document.originalName}</p>
-                          <p>Size: {(document.fileSize / 1024).toFixed(1)} KB</p>
-                          <p>Type: {document.mimeType}</p>
+                          <p>File: {doc.originalName}</p>
+                          <p>Size: {(doc.fileSize / 1024).toFixed(1)} KB</p>
+                          <p>Type: {doc.mimeType}</p>
                         </div>
 
                         {/* Action Buttons */}
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => {
-                              // View document in new tab
-                              window.open(document.fileUrl, '_blank');
+                              // View document in new tab - try multiple approaches
+                              console.log('Attempting to view document:', doc.fileUrl);
+                              
+                              // Try direct URL first
+                              const fullUrl = `http://localhost:5000${doc.fileUrl}`;
+                              console.log('Full URL:', fullUrl);
+                              window.open(fullUrl, '_blank');
                             }}
-                            className="flex-1 px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
+                            className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
                           >
                             <EyeIcon className="w-4 h-4" />
-                            <span>View</span>
-                          </button>
-                          <button
-                            onClick={() => {
-                              // Download document
-                              const link = document.createElement('a');
-                              link.href = document.fileUrl;
-                              link.download = document.originalName;
-                              link.target = '_blank';
-                              document.body.appendChild(link);
-                              link.click();
-                              document.body.removeChild(link);
-                            }}
-                            className="flex-1 px-3 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center justify-center space-x-1"
-                          >
-                            <ArrowDownTrayIcon className="w-4 h-4" />
-                            <span>Download</span>
+                            <span>View Document</span>
                           </button>
                         </div>
 
                         {/* Linked Records */}
-                        {(document.appointment || document.medicalRecord) && (
+                        {(doc.appointment || doc.medicalRecord) && (
                           <div className="mt-3 pt-3 border-t border-gray-200">
                             <p className="text-xs text-gray-500 mb-1">Linked to:</p>
-                            {document.appointment && (
+                            {doc.appointment && (
                               <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded mr-2">
                                 Appointment
                               </span>
                             )}
-                            {document.medicalRecord && (
+                            {doc.medicalRecord && (
                               <span className="inline-block px-2 py-1 bg-green-50 text-green-700 text-xs rounded">
                                 Medical Record
                               </span>

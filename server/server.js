@@ -8,6 +8,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const compression = require('compression');
+const path = require('path');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
 require('dotenv').config();
@@ -165,8 +166,8 @@ app.use('/api/refunds', refundRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/doctor', doctorRoutes);
 
-// Serve uploaded files
-app.use('/uploads', express.static('uploads'));
+// Serve uploaded files  
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
