@@ -1152,18 +1152,41 @@ const PatientRecords = () => {
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => {
-                              // View document in new tab - try multiple approaches
-                              console.log('Attempting to view document:', doc.fileUrl);
+                              console.log('Document details:', doc);
+                              console.log('File type:', doc.mimeType);
+                              console.log('File URL:', doc.fileUrl);
                               
-                              // Try direct URL first
-                              const fullUrl = `http://localhost:5000${doc.fileUrl}`;
-                              console.log('Full URL:', fullUrl);
-                              window.open(fullUrl, '_blank');
+                              // For images, create an image viewer modal or direct display
+                              if (doc.mimeType && doc.mimeType.startsWith('image/')) {
+                                // Create a simple image viewer
+                                const imageWindow = window.open('', '_blank');
+                                imageWindow.document.write(`
+                                  <html>
+                                    <head>
+                                      <title>${doc.title}</title>
+                                      <style>
+                                        body { margin: 0; padding: 20px; background: #f0f0f0; text-align: center; }
+                                        img { max-width: 100%; max-height: 90vh; border: 1px solid #ddd; }
+                                        h3 { color: #333; }
+                                      </style>
+                                    </head>
+                                    <body>
+                                      <h3>${doc.title}</h3>
+                                      <img src="http://localhost:5000${doc.fileUrl}" alt="${doc.title}" 
+                                           onerror="this.parentElement.innerHTML='<p>Error loading image. File may not exist.</p>'" />
+                                    </body>
+                                  </html>
+                                `);
+                              } else {
+                                // For PDFs and other documents, try direct URL
+                                const fullUrl = `http://localhost:5000${doc.fileUrl}`;
+                                window.open(fullUrl, '_blank');
+                              }
                             }}
                             className="w-full px-3 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-1"
                           >
                             <EyeIcon className="w-4 h-4" />
-                            <span>View Document</span>
+                            <span>{doc.mimeType && doc.mimeType.startsWith('image/') ? 'View Image' : 'View Document'}</span>
                           </button>
                         </div>
 

@@ -138,6 +138,9 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
+// Serve uploaded files BEFORE API routes to avoid notFound middleware
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -165,9 +168,6 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/refunds', refundRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/doctor', doctorRoutes);
-
-// Serve uploaded files  
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
