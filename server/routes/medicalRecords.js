@@ -1,5 +1,8 @@
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const MedicalRecord = require('../models/MedicalRecord');
 const User = require('../models/User');
 const Appointment = require('../models/Appointment');
@@ -7,6 +10,41 @@ const auth = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
 
 const router = express.Router();
+
+// Configure multer for document uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const uploadPath = path.join(__dirname, '../uploads/documents');
+    
+    // Create directory if it doesn't exist
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    
+    cb(null, uploadPath);
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const extension = path.extname(file.originalname);
+    cb(null, 'medical-doc-' + uniqueSuffix + extension);
+  }
+});
+
+const fileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+  
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPG, PNG, and PDF are allowed.'), false);
+  }
+};
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: fileFilter
+});
 
 // @desc    Get medical records
 // @route   GET /api/medical-records
@@ -29,8 +67,8 @@ router.get('/', auth, async (req, res) => {
     // Additional filters from query params
     const { patientId, recordType, startDate, endDate, search } = req.query;
     
-    // Only admin, manager, and staff can filter by patient
-    if (patientId && ['admin', 'manager', 'staff'].includes(req.user.role)) {
+    // Only admin, manager, staff, and receptionist can filter by patient
+    if (patientId && ['admin', 'manager', 'staff', 'receptionist'].includes(req.user.role)) {
       query.patient = patientId;
     }
     
@@ -211,6 +249,80 @@ router.post('/',
   }
 );
 
+// @desc    Upload documents to medical record
+// @route   POST /api/medical-records/:id/documents
+// @access  Private (Doctor, Staff, Receptionist, Manager)
+router.post('/:id/documents', 
+  auth, 
+  authorize('doctor', 'staff', 'receptionist', 'manager'),
+  upload.array('documents', 10), // Allow up to 10 files
+  async (req, res) => {
+    try {
+      const record = await MedicalRecord.findById(req.params.id);
+      
+      if (!record) {
+        // Clean up uploaded files if record not found
+        if (req.files) {
+          req.files.forEach(file => {
+            if (fs.existsSync(file.path)) {
+              fs.unlinkSync(file.path);
+            }
+          });
+        }
+        
+        return res.status(404).json({
+          success: false,
+          message: 'Medical record not found'
+        });
+      }
+      
+      // Process uploaded files
+      const documents = req.files.map(file => ({
+        fileName: file.originalname,
+        fileUrl: `/uploads/documents/${file.filename}`,
+        fileType: file.mimetype,
+        fileSize: file.size,
+        uploadedBy: req.user.id,
+        uploadedAt: new Date()
+      }));
+      
+      // Add documents to medical record
+      if (!record.documents) {
+        record.documents = [];
+      }
+      record.documents.push(...documents);
+      
+      await record.save();
+      
+      res.json({
+        success: true,
+        message: `${documents.length} document(s) uploaded successfully`,
+        data: {
+          record,
+          uploadedDocuments: documents
+        }
+      });
+    } catch (error) {
+      console.error('Upload documents error:', error);
+      
+      // Clean up uploaded files on error
+      if (req.files) {
+        req.files.forEach(file => {
+          if (fs.existsSync(file.path)) {
+            fs.unlinkSync(file.path);
+          }
+        });
+      }
+      
+      res.status(500).json({
+        success: false,
+        message: 'Server error',
+        error: error.message
+      });
+    }
+  }
+);
+
 // @desc    Update medical record
 // @route   PUT /api/medical-records/:id
 // @access  Private (Doctor, Admin)
@@ -309,6 +421,47 @@ router.delete('/:id', auth, authorize('admin'), async (req, res) => {
     });
   } catch (error) {
     console.error('Delete medical record error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get all medical records for a patient
+// @route   GET /api/medical-records/patient/:patientId
+// @access  Private (Doctor, Staff, Receptionist, Manager)
+router.get('/patient/:patientId', auth, authorize('doctor', 'staff', 'receptionist', 'manager', 'patient'), async (req, res) => {
+  try {
+    const { patientId } = req.params;
+    
+    // Check authorization - patients can only view their own records
+    if (req.user.role === 'patient' && patientId !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to view these records'
+      });
+    }
+    
+    const records = await MedicalRecord.find({ 
+      patient: patientId,
+      status: 'active'
+    })
+      .populate('doctor', 'firstName lastName specialization')
+      .populate('createdBy', 'firstName lastName role')
+      .populate('appointment')
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      count: records.length,
+      data: {
+        records
+      }
+    });
+  } catch (error) {
+    console.error('Get patient records error:', error);
     res.status(500).json({
       success: false,
       message: 'Server error',

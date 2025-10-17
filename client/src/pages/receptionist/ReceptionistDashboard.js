@@ -12,7 +12,11 @@ import {
   PhoneIcon,
   EnvelopeIcon,
   CalendarIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  ArrowUpTrayIcon,
+  DocumentArrowUpIcon,
+  DocumentTextIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
@@ -32,25 +36,14 @@ const ReceptionistDashboard = () => {
   const [nicImageUrl, setNicImageUrl] = useState(null);
   const [verificationNote, setVerificationNote] = useState('');
   
-  // Medical record creation state
-  const [medicalRecordForm, setMedicalRecordForm] = useState({
-    recordType: 'consultation',
-    title: '',
-    description: '',
-    treatmentPlan: '',
-    diagnosis: {
-      primary: '',
-      severity: 'moderate',
-      secondary: []
-    },
-    labTests: [],
-    prescriptions: []
-  });
+  // Patient medical history (for medical records tab)
+  const [patientMedicalHistory, setPatientMedicalHistory] = useState([]);
+  const [selectedFiles, setSelectedFiles] = useState([]);
 
   const tabs = [
     { id: 'search', name: 'Patient Search', icon: MagnifyingGlassIcon },
     { id: 'verify', name: 'Verify Identity', icon: ShieldCheckIcon },
-    { id: 'records', name: 'Create Record', icon: ClipboardDocumentListIcon }
+    { id: 'records', name: 'Upload Lab Tests', icon: ClipboardDocumentListIcon }
   ];
 
   // Fetch patients for verification when switching to verify tab
@@ -59,6 +52,13 @@ const ReceptionistDashboard = () => {
       fetchPatientsForVerification();
     }
   }, [activeTab, filterStatus]);
+
+  // Fetch patient medical history when patient is selected for records tab
+  useEffect(() => {
+    if (selectedPatient && activeTab === 'records') {
+      fetchPatientMedicalHistory(selectedPatient._id);
+    }
+  }, [selectedPatient, activeTab]);
 
   // Fetch NIC image when a patient is selected in verify tab
   useEffect(() => {
@@ -152,46 +152,78 @@ const ReceptionistDashboard = () => {
     }
   };
 
-  // Create medical record
-  const createMedicalRecord = async () => {
-    if (!selectedPatient) {
-      toast.error('Please select a patient first');
-      return;
+  // Fetch patient medical history when patient is selected
+  const fetchPatientMedicalHistory = async (patientId) => {
+    try {
+      const response = await api.get(`/medical-records/patient/${patientId}`);
+      if (response.data.success) {
+        setPatientMedicalHistory(response.data.data.records || []);
+      }
+    } catch (error) {
+      console.error('Error fetching medical history:', error);
+      // Don't show error toast - just fail silently
+      setPatientMedicalHistory([]);
     }
+  };
 
-    if (!medicalRecordForm.title || !medicalRecordForm.description) {
-      toast.error('Please fill in required fields (Title and Description)');
+  // Handle file selection
+  const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files);
+    
+    // Validate file size (max 5MB per file)
+    const maxSize = 5 * 1024 * 1024;
+    const validFiles = files.filter(file => {
+      if (file.size > maxSize) {
+        toast.error(`${file.name} is too large. Max size is 5MB`);
+        return false;
+      }
+      return true;
+    });
+
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+  };
+
+  // Remove selected file
+  const removeFile = (index) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Upload documents to medical record
+  const uploadDocuments = async (medicalRecordId) => {
+    if (selectedFiles.length === 0) {
+      toast.error('Please select files to upload');
       return;
     }
 
     try {
       setLoading(true);
-      const response = await api.post('/medical-records', {
-        patient: selectedPatient._id,
-        ...medicalRecordForm,
-        createdBy: user.id || user._id
+      const formData = new FormData();
+      selectedFiles.forEach(file => {
+        formData.append('documents', file);
       });
 
-      if (response.data.success) {
-        toast.success('Medical record created successfully!');
-        // Reset form
-        setMedicalRecordForm({
-          recordType: 'consultation',
-          title: '',
-          description: '',
-          treatmentPlan: '',
-          diagnosis: {
-            primary: '',
-            severity: 'moderate',
-            secondary: []
+      const response = await api.post(
+        `/medical-records/${medicalRecordId}/documents`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
           },
-          labTests: [],
-          prescriptions: []
-        });
+        }
+      );
+
+      if (response.data.success) {
+        toast.success('Lab test documents uploaded successfully!');
+        setSelectedFiles([]);
+        
+        // Refresh medical history to show updated documents
+        if (selectedPatient) {
+          await fetchPatientMedicalHistory(selectedPatient._id);
+        }
       }
     } catch (error) {
-      console.error('Create record error:', error);
-      toast.error(error.response?.data?.message || 'Failed to create medical record');
+      console.error('Error uploading documents:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload documents');
     } finally {
       setLoading(false);
     }
@@ -517,7 +549,8 @@ const ReceptionistDashboard = () => {
               <div>
                 <div className="flex items-center space-x-3 mb-6">
                   <ClipboardDocumentListIcon className="w-6 h-6 text-purple-600" />
-                  <h2 className="text-2xl font-bold text-gray-900">Create Medical Record</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Upload Lab Test Documents</h2>
+                  <p className="text-sm text-gray-600">Add test results to doctor's treatment plan</p>
                 </div>
                 
                 {!selectedPatient ? (
@@ -546,7 +579,10 @@ const ReceptionistDashboard = () => {
                           </p>
                         </div>
                         <button
-                          onClick={() => setSelectedPatient(null)}
+                          onClick={() => {
+                            setSelectedPatient(null);
+                            setPatientMedicalHistory([]);
+                          }}
                           className="text-blue-600 hover:text-blue-800 font-semibold"
                         >
                           Change Patient
@@ -554,118 +590,241 @@ const ReceptionistDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Record Form */}
-                    <div className="bg-white border-2 border-gray-200 rounded-xl p-6 space-y-6">
-                      {/* Record Type */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Record Type</label>
-                        <select
-                          value={medicalRecordForm.recordType}
-                          onChange={(e) => setMedicalRecordForm({ ...medicalRecordForm, recordType: e.target.value })}
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        >
-                          <option value="consultation">Consultation</option>
-                          <option value="diagnosis">Diagnosis</option>
-                          <option value="treatment-plan">Treatment Plan</option>
-                          <option value="lab-result">Lab Result</option>
-                          <option value="prescription">Prescription</option>
-                        </select>
+                    {/* Doctor's Treatment Plans (from today's visit) */}
+                    {loading ? (
+                      <div className="text-center py-12">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
+                        <p className="text-gray-600 mt-4">Loading treatment plans...</p>
                       </div>
-
-                      {/* Title */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Title <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={medicalRecordForm.title}
-                          onChange={(e) => setMedicalRecordForm({ ...medicalRecordForm, title: e.target.value })}
-                          placeholder="e.g., Annual Check-up, Treatment Plan for..."
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Description */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                          Description <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          value={medicalRecordForm.description}
-                          onChange={(e) => setMedicalRecordForm({ ...medicalRecordForm, description: e.target.value })}
-                          rows={4}
-                          placeholder="Enter detailed description of the medical record..."
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      {/* Treatment Plan */}
-                      <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Treatment Plan</label>
-                        <textarea
-                          value={medicalRecordForm.treatmentPlan}
-                          onChange={(e) => setMedicalRecordForm({ ...medicalRecordForm, treatmentPlan: e.target.value })}
-                          rows={3}
-                          placeholder="Enter treatment plan details..."
-                          className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Primary Diagnosis */}
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Primary Diagnosis</label>
-                          <input
-                            type="text"
-                            value={medicalRecordForm.diagnosis.primary}
-                            onChange={(e) => setMedicalRecordForm({
-                              ...medicalRecordForm,
-                              diagnosis: { ...medicalRecordForm.diagnosis, primary: e.target.value }
-                            })}
-                            placeholder="Enter primary diagnosis..."
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          />
+                    ) : patientMedicalHistory.length > 0 ? (
+                      <div className="bg-white border-2 border-gray-200 rounded-xl p-6">
+                        <div className="flex items-center justify-between mb-4">
+                          <h3 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
+                            <ClipboardDocumentListIcon className="w-5 h-5 text-purple-600" />
+                            <span>Doctor's Treatment Plans</span>
+                          </h3>
+                          <span className="text-sm bg-purple-100 text-purple-700 px-3 py-1 rounded-full font-semibold">
+                            {patientMedicalHistory.length} visit(s)
+                          </span>
                         </div>
+                        
+                        <p className="text-sm text-gray-600 mb-4">
+                          Select a treatment plan to upload lab test documents
+                        </p>
 
-                        {/* Severity */}
-                        <div>
-                          <label className="block text-sm font-semibold text-gray-700 mb-2">Severity</label>
-                          <select
-                            value={medicalRecordForm.diagnosis.severity}
-                            onChange={(e) => setMedicalRecordForm({
-                              ...medicalRecordForm,
-                              diagnosis: { ...medicalRecordForm.diagnosis, severity: e.target.value }
-                            })}
-                            className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          >
-                            <option value="mild">Mild</option>
-                            <option value="moderate">Moderate</option>
-                            <option value="severe">Severe</option>
-                            <option value="critical">Critical</option>
-                          </select>
+                        <div className="space-y-3">
+                          {patientMedicalHistory.map((record, index) => {
+                            const isRecent = new Date(record.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000); // Within 7 days
+                            const hasDocuments = record.documents && record.documents.length > 0;
+                            
+                            return (
+                              <div
+                                key={record._id || index}
+                                className={`p-5 rounded-xl border-2 transition-all cursor-pointer ${
+                                  isRecent 
+                                    ? 'bg-gradient-to-r from-green-50 to-blue-50 border-green-300 hover:shadow-lg' 
+                                    : 'bg-gray-50 border-gray-200 hover:border-purple-300'
+                                }`}
+                              >
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <div className="flex items-center space-x-3 mb-2">
+                                      <h4 className="font-bold text-gray-900 text-lg">{record.title}</h4>
+                                      {isRecent && (
+                                        <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-semibold animate-pulse">
+                                          Recent Visit
+                                        </span>
+                                      )}
+                                      <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full font-semibold">
+                                        {record.recordType}
+                                      </span>
+                                    </div>
+                                    
+                                    <p className="text-sm text-gray-700 mb-3">{record.description}</p>
+                                    
+                                    {/* Doctor Info */}
+                                    <div className="flex items-center space-x-4 text-xs text-gray-600 mb-3">
+                                      <span className="flex items-center space-x-1">
+                                        <UserIcon className="w-4 h-4" />
+                                        <span>Dr. {record.createdBy?.firstName || record.doctor?.firstName || 'Unknown'}</span>
+                                      </span>
+                                      <span className="flex items-center space-x-1">
+                                        <CalendarIcon className="w-4 h-4" />
+                                        <span>{new Date(record.createdAt).toLocaleDateString()} at {new Date(record.createdAt).toLocaleTimeString()}</span>
+                                      </span>
+                                    </div>
+
+                                    {/* Treatment Plan */}
+                                    {record.treatmentPlan && (
+                                      <div className="mt-3 p-3 bg-white rounded-lg border-2 border-blue-200">
+                                        <p className="text-xs font-bold text-blue-700 mb-1">📋 Treatment Plan:</p>
+                                        <p className="text-sm text-gray-800">{record.treatmentPlan}</p>
+                                      </div>
+                                    )}
+                                    
+                                    {/* Diagnosis */}
+                                    {record.diagnosis?.primary && (
+                                      <div className="mt-2 flex items-center space-x-2">
+                                        <span className="text-xs font-semibold text-gray-600">🩺 Diagnosis:</span>
+                                        <span className="text-sm text-gray-900 font-medium">{record.diagnosis.primary}</span>
+                                        <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+                                          record.diagnosis.severity === 'critical' ? 'bg-red-100 text-red-700' :
+                                          record.diagnosis.severity === 'severe' ? 'bg-orange-100 text-orange-700' :
+                                          record.diagnosis.severity === 'moderate' ? 'bg-yellow-100 text-yellow-700' :
+                                          'bg-green-100 text-green-700'
+                                        }`}>
+                                          {record.diagnosis.severity}
+                                        </span>
+                                      </div>
+                                    )}
+
+                                    {/* Prescriptions */}
+                                    {record.prescriptions && record.prescriptions.length > 0 && (
+                                      <div className="mt-3">
+                                        <p className="text-xs font-bold text-gray-700 mb-2">💊 Prescriptions:</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {record.prescriptions.map((rx, i) => (
+                                            <span key={i} className="text-xs px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-medium">
+                                              {rx.medication} - {rx.dosage} ({rx.frequency})
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Lab Tests Ordered */}
+                                    {record.labTests && record.labTests.length > 0 && (
+                                      <div className="mt-3">
+                                        <p className="text-xs font-bold text-gray-700 mb-2">🧪 Lab Tests Ordered:</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {record.labTests.map((test, i) => (
+                                            <span key={i} className="text-xs px-3 py-1 bg-orange-100 text-orange-800 rounded-full font-medium">
+                                              {test.testName || test}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Existing Documents */}
+                                    {hasDocuments && (
+                                      <div className="mt-3 pt-3 border-t-2 border-gray-200">
+                                        <p className="text-xs font-bold text-green-700 mb-2">
+                                          ✅ Uploaded Documents ({record.documents.length}):
+                                        </p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {record.documents.map((doc, i) => (
+                                            <a
+                                              key={i}
+                                              href={`${process.env.REACT_APP_API_URL?.replace('/api', '')}${doc.fileUrl}`}
+                                              target="_blank"
+                                              rel="noopener noreferrer"
+                                              className="text-xs px-3 py-1 bg-green-100 text-green-700 hover:bg-green-200 rounded-lg border border-green-300 flex items-center space-x-1 transition-colors"
+                                            >
+                                              <DocumentTextIcon className="w-3 h-3" />
+                                              <span>{doc.fileName}</span>
+                                            </a>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Upload Documents Section for this record */}
+                                <div className="mt-4 pt-4 border-t-2 border-gray-200">
+                                  <label className="block text-sm font-bold text-gray-700 mb-3">
+                                    📎 Upload Lab Test Results for this Visit
+                                  </label>
+                                  
+                                  {/* File Input */}
+                                  <div className="mb-4">
+                                    <label className="flex items-center justify-center w-full px-4 py-4 border-2 border-dashed border-purple-300 rounded-xl cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition-all bg-white">
+                                      <div className="text-center">
+                                        <DocumentArrowUpIcon className="w-10 h-10 text-purple-500 mx-auto mb-2" />
+                                        <span className="text-sm text-gray-700 font-semibold">
+                                          Click to upload lab results
+                                        </span>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                          PDF, JPG, PNG (Max 5MB per file)
+                                        </p>
+                                      </div>
+                                      <input
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.jpg,.jpeg,.png"
+                                        onChange={(e) => {
+                                          handleFileSelect(e);
+                                          // Store the record ID for later use
+                                          e.target.dataset.recordId = record._id;
+                                        }}
+                                        className="hidden"
+                                      />
+                                    </label>
+                                  </div>
+
+                                  {/* Show selected files and upload button only for this record */}
+                                  {selectedFiles.length > 0 && (
+                                    <div className="space-y-3">
+                                      <div className="space-y-2">
+                                        <p className="text-sm font-semibold text-gray-700">
+                                          Selected Files ({selectedFiles.length})
+                                        </p>
+                                        {selectedFiles.map((file, idx) => (
+                                          <div
+                                            key={idx}
+                                            className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border border-purple-200"
+                                          >
+                                            <div className="flex items-center space-x-3">
+                                              <DocumentTextIcon className="w-5 h-5 text-purple-600" />
+                                              <div>
+                                                <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                                                <p className="text-xs text-gray-500">
+                                                  {(file.size / 1024).toFixed(2)} KB
+                                                </p>
+                                              </div>
+                                            </div>
+                                            <button
+                                              onClick={() => removeFile(idx)}
+                                              className="text-red-500 hover:text-red-700 transition-colors"
+                                            >
+                                              <XMarkIcon className="w-5 h-5" />
+                                            </button>
+                                          </div>
+                                        ))}
+                                      </div>
+
+                                      <button
+                                        onClick={() => uploadDocuments(record._id)}
+                                        disabled={loading}
+                                        className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all font-bold disabled:opacity-50 shadow-lg flex items-center justify-center space-x-2"
+                                      >
+                                        <ArrowUpTrayIcon className="w-5 h-5" />
+                                        <span>{loading ? 'Uploading...' : 'Upload Documents to this Visit'}</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex space-x-4 pt-4 border-t-2 border-gray-100">
-                        <button
-                          onClick={createMedicalRecord}
-                          disabled={loading}
-                          className="flex-1 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl hover:from-purple-700 hover:to-blue-700 transition-all font-bold disabled:opacity-50 shadow-lg"
-                        >
-                          {loading ? 'Creating...' : 'Create Medical Record'}
-                        </button>
-                        <button
-                          onClick={() => setSelectedPatient(null)}
-                          className="px-8 py-4 border-2 border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-semibold"
-                        >
-                          Cancel
-                        </button>
+                    ) : (
+                      <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-8 text-center">
+                        <ClipboardDocumentListIcon className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+                        <h3 className="text-lg font-bold text-gray-900 mb-2">No Treatment Plans Found</h3>
+                        <p className="text-gray-600 mb-4">
+                          This patient doesn't have any treatment plans yet.
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          The doctor needs to create a treatment plan during the patient's visit first.
+                        </p>
                       </div>
-                    </div>
+                    )}
                   </div>
                 )}
+
               </div>
             )}
           </div>
