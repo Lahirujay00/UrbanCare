@@ -23,7 +23,6 @@ import { appointmentAPI, medicalRecordsAPI } from '../../services/api';
 import HealthCardDisplay from '../../components/HealthCard/HealthCardDisplay';
 import DocumentManager from '../../components/Documents/DocumentManager';
 import RefundManager from '../../components/Refunds/RefundManager';
-import ChatBot from '../../components/ChatBot/ChatBot';
 import AppointmentBooking from './AppointmentBooking';
 import MedicalRecords from './MedicalRecords';
 import ProfileEditor from './ProfileEditor';
@@ -677,9 +676,6 @@ const PatientDashboardEnhanced = () => {
           </div>
         )}
       </div>
-
-      {/* ChatBot Component */}
-      <ChatBot />
     </div>
   );
 };
