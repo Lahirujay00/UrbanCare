@@ -13,7 +13,6 @@ import { useAuth } from '../../hooks/useAuth';
 import { userAPI, reportAPI } from '../../services/api';
 import ReportsDashboard from '../../components/Reports/ReportsDashboard';
 import RefundManager from '../../components/Refunds/RefundManager';
-import ChatBot from '../../components/ChatBot/ChatBot';
 import toast from 'react-hot-toast';
 
 const AdminDashboard = () => {
@@ -563,9 +562,6 @@ const AdminDashboard = () => {
         {/* Refunds Tab */}
         {activeTab === 'refunds' && <RefundManager />}
       </div>
-
-      {/* ChatBot Component */}
-      <ChatBot />
     </div>
   );
 };

@@ -19,7 +19,6 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { appointmentAPI, medicalRecordsAPI, userAPI } from '../../services/api';
-import ChatBot from '../../components/ChatBot/ChatBot';
 import toast from 'react-hot-toast';
 
 const DoctorDashboardEnhanced = () => {
@@ -923,9 +922,6 @@ const DoctorDashboardEnhanced = () => {
           </div>
         )}
       </div>
-
-      {/* ChatBot */}
-      <ChatBot />
     </div>
   );
 };
