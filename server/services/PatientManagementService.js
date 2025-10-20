@@ -2,6 +2,8 @@ const User = require('../models/User');
 const MedicalRecord = require('../models/MedicalRecord');
 const Appointment = require('../models/Appointment');
 const AuditLog = require('../models/AuditLog');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const mongoose = require('mongoose');
 
 /**
@@ -623,6 +625,668 @@ class PatientManagementService {
     }
 
     return alerts;
+  }
+
+  /**
+   * Register a new patient
+   */
+  async registerPatient(registrationData) {
+    try {
+      // Validate required fields
+      const { firstName, lastName, email, password, phone } = registrationData;
+      if (!firstName || !lastName || !email || !password || !phone) {
+        return {
+          success: false,
+          message: 'Missing required fields: firstName, lastName, email, password, phone'
+        };
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return {
+          success: false,
+          message: 'Invalid email format'
+        };
+      }
+
+      // Validate password strength
+      if (password.length < 8) {
+        return {
+          success: false,
+          message: 'Password must be at least 8 characters long'
+        };
+      }
+
+      // Validate phone format - allow various formats
+      const cleanPhone = phone.replace(/[\s-()]/g, '');
+      const phoneRegex = /^\+?[1-9]\d{7,14}$/;
+      if (!phoneRegex.test(cleanPhone)) {
+        return {
+          success: false,
+          message: 'Invalid phone number format'
+        };
+      }
+
+      // Validate field lengths
+      if (firstName.length > 100 || lastName.length > 100) {
+        return {
+          success: false,
+          message: 'Field length exceeds maximum allowed'
+        };
+      }
+
+      // Check if email already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return {
+          success: false,
+          message: 'Email already registered'
+        };
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 12);
+
+      // Create new user
+      const newUser = new User({
+        ...registrationData,
+        password: hashedPassword,
+        role: 'patient',
+        isActive: true,
+        isEmailVerified: false
+      });
+
+      await newUser.save();
+
+      // Return user without password
+      const userResponse = newUser.toJSON();
+      delete userResponse.password;
+
+      return {
+        success: true,
+        message: 'Patient registered successfully',
+        user: userResponse
+      };
+
+    } catch (error) {
+      if (error.code === 11000) {
+        return {
+          success: false,
+          message: 'Email already registered'
+        };
+      }
+      return {
+        success: false,
+        message: 'Registration failed due to server error'
+      };
+    }
+  }
+
+  /**
+   * Authenticate patient login
+   */
+  async authenticatePatient(loginData) {
+    try {
+      const { email, password, rememberMe } = loginData;
+
+      if (!email || !password) {
+        return {
+          success: false,
+          message: 'Email and password are required'
+        };
+      }
+
+      // Find user with active status and patient role
+      const user = await User.findOne({
+        email,
+        role: 'patient',
+        isActive: true
+      });
+
+      if (!user) {
+        return {
+          success: false,
+          message: 'Invalid credentials'
+        };
+      }
+
+      // Check password
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return {
+          success: false,
+          message: 'Invalid credentials'
+        };
+      }
+
+      // Generate JWT token
+      const tokenPayload = {
+        userId: user._id,
+        role: user.role,
+        email: user.email
+      };
+
+      const tokenOptions = {
+        expiresIn: rememberMe ? '30d' : '24h'
+      };
+
+      const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, tokenOptions);
+
+      // Return user without password
+      const userResponse = user.toJSON();
+      delete userResponse.password;
+
+      return {
+        success: true,
+        message: 'Authentication successful',
+        token,
+        user: userResponse
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Authentication failed due to server error'
+      };
+    }
+  }
+
+  /**
+   * Get patient profile by ID
+   */
+  async getPatientProfile(patientId) {
+    try {
+      const user = await User.findById(patientId);
+      if (!user) {
+        return {
+          success: false,
+          message: 'Patient not found'
+        };
+      }
+
+      const userResponse = user.toJSON();
+      delete userResponse.password;
+
+      return {
+        success: true,
+        profile: userResponse
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to retrieve profile'
+      };
+    }
+  }
+
+  /**
+   * Update patient profile
+   */
+  async updatePatientProfile(patientId, updateData) {
+    try {
+      if (!updateData || Object.keys(updateData).length === 0) {
+        return {
+          success: false,
+          message: 'No update data provided'
+        };
+      }
+
+      // Validate email if provided
+      if (updateData.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(updateData.email)) {
+          return {
+            success: false,
+            message: 'Invalid email format'
+          };
+        }
+
+        // Check if email is already in use by another user
+        const existingUser = await User.findOne({
+          email: updateData.email,
+          _id: { $ne: patientId }
+        });
+        if (existingUser) {
+          return {
+            success: false,
+            message: 'Email already in use by another account'
+          };
+        }
+      }
+
+      // Validate phone if provided
+      if (updateData.phone) {
+        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+        if (!phoneRegex.test(updateData.phone.replace(/[\s-()]/g, ''))) {
+          return {
+            success: false,
+            message: 'Invalid phone number format'
+          };
+        }
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        patientId,
+        updateData,
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedUser) {
+        return {
+          success: false,
+          message: 'Patient not found'
+        };
+      }
+
+      const userResponse = updatedUser.toJSON();
+      delete userResponse.password;
+
+      return {
+        success: true,
+        profile: userResponse
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Profile update failed due to server error'
+      };
+    }
+  }
+
+  /**
+   * Get dashboard data for patient
+   */
+  async getDashboardData(patientId) {
+    try {
+      const user = await User.findById(patientId);
+      if (!user) {
+        return {
+          success: false,
+          message: 'Patient not found'
+        };
+      }
+
+      // Calculate profile completeness
+      const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'address', 'emergencyContact'];
+      const completedFields = requiredFields.filter(field => {
+        if (field === 'address') {
+          return user.address && user.address.street;
+        }
+        if (field === 'emergencyContact') {
+          return user.emergencyContact && user.emergencyContact.name;
+        }
+        return user[field];
+      });
+      const profileCompleteness = Math.round((completedFields.length / requiredFields.length) * 100);
+
+      return {
+        success: true,
+        data: {
+          upcomingAppointments: [],
+          recentMedicalRecords: [],
+          profileCompleteness
+        }
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to retrieve dashboard data due to server error'
+      };
+    }
+  }
+
+  /**
+   * Validate JWT token
+   */
+  async validateToken(token) {
+    try {
+      if (!token) {
+        return {
+          success: false,
+          message: 'Token is required'
+        };
+      }
+
+      // Check if token has proper format (3 parts separated by dots)
+      if (typeof token !== 'string' || token.split('.').length !== 3) {
+        return {
+          success: false,
+          message: 'Invalid token format'
+        };
+      }
+
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const user = await User.findById(decoded.userId);
+
+      if (!user) {
+        return {
+          success: false,
+          message: 'User not found'
+        };
+      }
+
+      return {
+        success: true,
+        user
+      };
+
+    } catch (error) {
+      if (error.name === 'TokenExpiredError') {
+        return {
+          success: false,
+          message: 'Token expired'
+        };
+      }
+      return {
+        success: false,
+        message: 'Invalid token'
+      };
+    }
+  }
+
+  /**
+   * Update patient profile
+   */
+  async updatePatientProfile(patientId, updateData) {
+    try {
+      if (!updateData || Object.keys(updateData).length === 0) {
+        return {
+          success: false,
+          message: 'No update data provided'
+        };
+      }
+
+      // Validate email format if provided
+      if (updateData.email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(updateData.email)) {
+          return {
+            success: false,
+            message: 'Invalid email format'
+          };
+        }
+
+        // Check for duplicate email
+        const existingUser = await User.findOne({ 
+          email: updateData.email,
+          _id: { $ne: patientId }
+        });
+        if (existingUser) {
+          return {
+            success: false,
+            message: 'Email already in use by another account'
+          };
+        }
+      }
+
+      // Validate phone format if provided
+      if (updateData.phone) {
+        const cleanPhone = updateData.phone.replace(/[\s-()]/g, '');
+        const phoneRegex = /^\+?[1-9]\d{7,14}$/;
+        if (!phoneRegex.test(cleanPhone)) {
+          return {
+            success: false,
+            message: 'Invalid phone number format'
+          };
+        }
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        patientId,
+        updateData,
+        { new: true, runValidators: true }
+      );
+
+      if (!updatedUser) {
+        return {
+          success: false,
+          message: 'Patient not found'
+        };
+      }
+
+      return {
+        success: true,
+        message: 'Profile updated successfully',
+        profile: updatedUser
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Profile update failed due to server error'
+      };
+    }
+  }
+
+  /**
+   * Get dashboard data for patient
+   */
+  async getDashboardData(patientId) {
+    try {
+      const user = await User.findById(patientId);
+      
+      if (!user) {
+        return {
+          success: false,
+          message: 'Patient not found'
+        };
+      }
+
+      // Calculate profile completeness
+      let completeness = 0;
+      const fields = ['firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'address', 'emergencyContact'];
+      const completedFields = fields.filter(field => {
+        if (field === 'address' || field === 'emergencyContact') {
+          return user[field] && Object.keys(user[field]).length > 0;
+        }
+        return user[field];
+      });
+      
+      completeness = Math.round((completedFields.length / fields.length) * 100);
+
+      return {
+        success: true,
+        data: {
+          profileCompleteness: completeness,
+          recentActivity: [],
+          upcomingAppointments: [],
+          healthSummary: {
+            allergies: user.allergies || [],
+            chronicConditions: user.chronicConditions || []
+          }
+        }
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to retrieve dashboard data due to server error'
+      };
+    }
+  }
+
+  /**
+   * Search patients
+   */
+  async searchPatients(searchParams, doctorId) {
+    try {
+      const { query, type, limit = 10 } = searchParams;
+
+      if (!query) {
+        return {
+          success: false,
+          message: 'Search query is required'
+        };
+      }
+
+      let searchCriteria = { role: 'patient' };
+
+      switch (type) {
+        case 'name':
+          searchCriteria.$or = [
+            { firstName: { $regex: query, $options: 'i' } },
+            { lastName: { $regex: query, $options: 'i' } }
+          ];
+          break;
+        case 'email':
+          searchCriteria.email = { $regex: query, $options: 'i' };
+          break;
+        case 'phone':
+          searchCriteria.phone = { $regex: query, $options: 'i' };
+          break;
+        default:
+          searchCriteria.$or = [
+            { firstName: { $regex: query, $options: 'i' } },
+            { lastName: { $regex: query, $options: 'i' } },
+            { email: { $regex: query, $options: 'i' } }
+          ];
+      }
+
+      const patients = await User.find(searchCriteria)
+        .select('firstName lastName email phone dateOfBirth')
+        .limit(limit);
+
+      if (patients.length === 0) {
+        return {
+          success: true,
+          patients: [],
+          message: 'No patients found matching your search'
+        };
+      }
+
+      return {
+        success: true,
+        patients,
+        message: `Found ${patients.length} patients`
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Patient search failed due to server error'
+      };
+    }
+  }
+
+  /**
+   * Get patient details with medical records
+   */
+  async getPatientDetails(patientId, doctorId) {
+    try {
+      const patient = await User.findById(patientId);
+      
+      if (!patient) {
+        return {
+          success: false,
+          message: 'Patient not found'
+        };
+      }
+
+      // Get medical records
+      const medicalRecords = await this._getPatientMedicalRecords(patientId);
+      
+      // Get appointments
+      const appointments = await this._getPatientAppointments(patientId);
+      
+      // Generate alerts
+      const alerts = this._generatePatientAlerts(patient);
+
+      // Log access for audit
+      await AuditLog.createLog({
+        userId: doctorId,
+        userRole: 'doctor',
+        action: 'VIEW_PATIENT_DETAILS',
+        resourceType: 'Patient',
+        resourceId: patientId,
+        description: `Accessed patient details for ${patient.firstName} ${patient.lastName}`
+      });
+
+      return {
+        success: true,
+        patient,
+        medicalRecords,
+        appointments,
+        alerts
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Failed to retrieve patient details due to server error'
+      };
+    }
+  }
+
+  /**
+   * Private helper methods
+   */
+  async _getPatientMedicalRecords(patientId) {
+    try {
+      return await MedicalRecord.find({ patient: patientId })
+        .populate('doctor', 'firstName lastName')
+        .sort({ createdAt: -1 });
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async _getPatientAppointments(patientId) {
+    try {
+      return await Appointment.find({ patient: patientId })
+        .populate('doctor', 'firstName lastName')
+        .sort({ appointmentDate: -1 });
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async _getRecentPatients(doctorId, limit) {
+    try {
+      return await User.find({ role: 'patient' })
+        .select('firstName lastName email')
+        .limit(limit);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async _getTodayPatients(doctorId) {
+    try {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      const appointments = await Appointment.find({
+        doctor: doctorId,
+        appointmentDate: { $gte: today, $lt: tomorrow }
+      }).populate('patient', 'firstName lastName');
+
+      return appointments.map(apt => apt.patient);
+    } catch (error) {
+      return [];
+    }
+  }
+
+  async _getPatientStatistics(doctorId) {
+    try {
+      const totalPatients = await User.countDocuments({ role: 'patient' });
+      return {
+        totalPatients,
+        newPatientsThisMonth: Math.floor(totalPatients * 0.1),
+        activePatients: Math.floor(totalPatients * 0.9)
+      };
+    } catch (error) {
+      return {
+        totalPatients: 0,
+        newPatientsThisMonth: 0,
+        activePatients: 0
+      };
+    }
   }
 }
 

@@ -1,4 +1,5 @@
 
+
 /**
  * @fileoverview Jest Configuration for UrbanCare Backend Testing
  * @author UrbanCare Development Team
@@ -59,4 +60,5 @@ module.exports = {
   // Detect open handles
   detectOpenHandles: true
 };
+
 
