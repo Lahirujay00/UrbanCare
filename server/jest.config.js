@@ -19,7 +19,7 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
   
   // Coverage configuration
-  collectCoverage: false, // Disable for now to focus on fixing tests
+  collectCoverage: true, // Enable coverage for comprehensive testing
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html', 'json'],
   
