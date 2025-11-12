@@ -39,7 +39,7 @@ const server = createServer(app);
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "https://urban-care-front.vercel.app",
     methods: ["GET", "POST"]
   }
 });
@@ -137,7 +137,8 @@ app.use(compression());
 // CORS - Enhanced configuration
 app.use(cors({
   origin: [
-    process.env.CLIENT_URL || "http://localhost:3000",
+    process.env.CLIENT_URL || "https://urban-care-front.vercel.app",
+    "https://urban-care-front.vercel.app",
     "http://localhost:3000",
     "http://localhost:5000"
   ],
