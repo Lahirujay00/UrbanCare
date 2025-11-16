@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "server/server.js",
+      "src": "server/api/index.js",
       "use": "@vercel/node"
     },
     {
@@ -16,15 +16,19 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server/server.js"
+      "dest": "server/api/index.js"
+    },
+    {
+      "src": "/health",
+      "dest": "server/api/index.js"
     },
     {
       "src": "/socket.io/(.*)",
-      "dest": "server/server.js"
+      "dest": "server/api/index.js"
     },
     {
       "src": "/uploads/(.*)",
-      "dest": "server/server.js"
+      "dest": "server/api/index.js"
     },
     {
       "src": "/(.*)",
@@ -32,6 +36,7 @@
     }
   ],
   "env": {
-    "NODE_ENV": "production"
+    "NODE_ENV": "production",
+    "VERCEL": "1"
   }
 }

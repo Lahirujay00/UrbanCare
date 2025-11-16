@@ -47,50 +47,66 @@ const io = new Server(server, {
 // Make io accessible to routes
 app.set('io', io);
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
-  socketTimeoutMS: 45000,
-})
-.then(async () => {
-  console.log('MongoDB connected successfully');
+// MongoDB Connection with caching for serverless
+let cachedDb = null;
 
-  // Auto-setup healthcare manager user if it doesn't exist
-  try {
-    const User = require('./models/User');
-
-    const existingManager = await User.findOne({ email: 'manager@urbancare.com' });
-    if (!existingManager) {
-      const managerUser = new User({
-        firstName: 'Healthcare',
-        lastName: 'Manager',
-        email: 'manager@urbancare.com',
-        password: 'Manager123!', // Plain password - will be hashed by pre-save middleware
-        phone: '+1-555-0100',
-        role: 'manager',
-        isActive: true,
-        isEmailVerified: true,
-        address: {
-          street: '123 Healthcare Street',
-          city: 'Healthcare City',
-          state: 'HC',
-          zipCode: '12345',
-          country: 'USA'
-        }
-      });
-
-      await managerUser.save();
-      console.log('Default healthcare manager user created automatically');
-      console.log('Email: manager@urbancare.com');
-      console.log('Password: Manager123!');
-    }
-  } catch (error) {
-    console.error('Error auto-creating healthcare manager user:', error.message);
+async function connectToDatabase() {
+  if (cachedDb && mongoose.connection.readyState === 1) {
+    console.log('Using cached database connection');
+    return cachedDb;
   }
-})
-.catch((err) => console.error('MongoDB connection error:', err));
+
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 10000,
+      socketTimeoutMS: 45000,
+    });
+    
+    cachedDb = mongoose.connection;
+    console.log('MongoDB connected successfully');
+
+    // Auto-setup healthcare manager user if it doesn't exist (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const User = require('./models/User');
+        const existingManager = await User.findOne({ email: 'manager@urbancare.com' });
+        if (!existingManager) {
+          const managerUser = new User({
+            firstName: 'Healthcare',
+            lastName: 'Manager',
+            email: 'manager@urbancare.com',
+            password: 'Manager123!',
+            phone: '+1-555-0100',
+            role: 'manager',
+            isActive: true,
+            isEmailVerified: true,
+            address: {
+              street: '123 Healthcare Street',
+              city: 'Healthcare City',
+              state: 'HC',
+              zipCode: '12345',
+              country: 'USA'
+            }
+          });
+          await managerUser.save();
+          console.log('Default healthcare manager user created');
+        }
+      } catch (error) {
+        console.error('Error auto-creating manager:', error.message);
+      }
+    }
+
+    return cachedDb;
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    throw err;
+  }
+}
+
+// Initialize database connection
+connectToDatabase().catch(err => console.error('Initial DB connection failed:', err));
 
 // Security middleware
 app.use(helmet({
@@ -220,20 +236,31 @@ io.on('connection', (socket) => {
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`API Base URL: http://localhost:${PORT}/api`);
-  console.log(`Health Check: http://localhost:${PORT}/health`);
-});
+// Start server only in non-serverless environment
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+  connectToDatabase()
+    .then(() => {
+      server.listen(PORT, () => {
+        console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+        console.log(`API Base URL: http://localhost:${PORT}/api`);
+        console.log(`Health Check: http://localhost:${PORT}/health`);
+      });
+    })
+    .catch(err => {
+      console.error('Failed to connect to database:', err);
+      process.exit(1);
+    });
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
   console.log(`Unhandled Rejection: ${err.message}`);
-  server.close(() => {
-    process.exit(1);
-  });
+  if (server && typeof server.close === 'function') {
+    server.close(() => {
+      process.exit(1);
+    });
+  }
 });
 
 // Handle uncaught exceptions
@@ -242,4 +269,5 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+// Export app for Vercel serverless
 module.exports = app;
