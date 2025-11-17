@@ -59,16 +59,55 @@ vercel --prod
 
 ## Troubleshooting
 
-### If still getting 500 errors:
-1. Check Vercel function logs
-2. Verify MONGODB_URI is correct
-3. Ensure MongoDB Atlas allows connections from 0.0.0.0/0
-4. Check that all environment variables are set
+### If still getting 500 FUNCTION_INVOCATION_FAILED:
+
+1. **Check Vercel Function Logs:**
+   - Go to Vercel Dashboard → Your Project → Functions tab
+   - Click on the failing function to see detailed logs
+   - Look for error messages or stack traces
+
+2. **Verify Environment Variables:**
+   ```bash
+   # Required variables on Vercel:
+   NODE_ENV=production
+   VERCEL=1
+   MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/dbname
+   JWT_SECRET=your_secret_key
+   CLIENT_URL=https://urban-care-front.vercel.app
+   ```
+
+3. **Test MongoDB Connection:**
+   - Verify MONGODB_URI is correct and properly formatted
+   - Ensure MongoDB Atlas allows connections from 0.0.0.0/0
+   - Test connection string locally first
+   - Check MongoDB user has proper permissions
+
+4. **Check Package Dependencies:**
+   - Ensure all required packages are in `dependencies` (not `devDependencies`)
+   - Verify `package.json` has all needed packages
+
+5. **Test with Simple Function:**
+   - Deploy `api/test.js` first to verify basic serverless function works
+   - Once that works, switch back to `api/index.js`
 
 ### MongoDB Connection Issues:
-- Increase `serverSelectionTimeoutMS` if needed
-- Verify MongoDB Atlas network access settings
-- Check MongoDB user permissions
+- Timeout too short: Increase `serverSelectionTimeoutMS` to 5000-10000ms
+- Network access: Whitelist 0.0.0.0/0 in MongoDB Atlas
+- User permissions: Ensure DB user has readWrite permissions
+- Connection string: Must include database name and retryWrites parameter
+
+### Common Fixes:
+```javascript
+// In api/index.js - ensure proper async handler
+module.exports = async (req, res) => {
+  try {
+    await connectToDatabase();
+    return app(req, res);
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+```
 
 ## File Structure
 

@@ -47,24 +47,16 @@ const io = new Server(server, {
 // Make io accessible to routes
 app.set('io', io);
 
-// MongoDB Connection with caching for serverless
-let cachedDb = null;
-
-async function connectToDatabase() {
-  if (cachedDb && mongoose.connection.readyState === 1) {
-    console.log('Using cached database connection');
-    return cachedDb;
-  }
-
-  try {
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-    });
-    
-    cachedDb = mongoose.connection;
+// MongoDB Connection - handled by api/index.js for serverless
+// For local development, connect immediately
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+  })
+  .then(async () => {
     console.log('MongoDB connected successfully');
 
     // Auto-setup healthcare manager user if it doesn't exist (only in development)
@@ -97,16 +89,9 @@ async function connectToDatabase() {
         console.error('Error auto-creating manager:', error.message);
       }
     }
-
-    return cachedDb;
-  } catch (err) {
-    console.error('MongoDB connection error:', err);
-    throw err;
-  }
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
 }
-
-// Initialize database connection
-connectToDatabase().catch(err => console.error('Initial DB connection failed:', err));
 
 // Security middleware
 app.use(helmet({
