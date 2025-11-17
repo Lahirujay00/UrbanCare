@@ -1,3 +1,4 @@
+// Vercel Serverless Function Entry Point
 const mongoose = require('mongoose');
 
 // Import the Express app
