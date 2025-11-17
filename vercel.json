@@ -1,42 +1,9 @@
 {
   "version": 2,
-  "builds": [
+  "rewrites": [
     {
-      "src": "server/api/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "client/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "client/build"
-      }
+      "source": "/(.*)",
+      "destination": "/server/api/index.js"
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "server/api/index.js"
-    },
-    {
-      "src": "/health",
-      "dest": "server/api/index.js"
-    },
-    {
-      "src": "/socket.io/(.*)",
-      "dest": "server/api/index.js"
-    },
-    {
-      "src": "/uploads/(.*)",
-      "dest": "server/api/index.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "client/build/$1"
-    }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "VERCEL": "1"
-  }
+  ]
 }
