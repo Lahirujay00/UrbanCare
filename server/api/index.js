@@ -1,8 +1,24 @@
 // Vercel Serverless Function Entry Point
+const serverless = require('serverless-http');
 const mongoose = require('mongoose');
 
 // Import the Express app
-const app = require('../server');
+let app;
+try {
+  app = require('../server');
+} catch (error) {
+  console.error('Error loading server:', error);
+  // Create a minimal Express app as fallback
+  const express = require('express');
+  app = express();
+  app.get('*', (req, res) => {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load application',
+      message: error.message
+    });
+  });
+}
 
 // Cached database connection
 let isConnecting = false;
@@ -24,7 +40,9 @@ async function connectToDatabase() {
 
   try {
     if (!process.env.MONGODB_URI) {
-      throw new Error('MONGODB_URI environment variable is not set');
+      console.warn('MONGODB_URI not set, skipping database connection');
+      isConnecting = false;
+      return null;
     }
 
     console.log('Connecting to MongoDB...');
@@ -46,41 +64,23 @@ async function connectToDatabase() {
     isConnecting = false;
     cachedDb = null;
     console.error('MongoDB connection error:', err.message);
-    throw err;
+    // Don't throw - allow request to proceed without DB
+    return null;
   }
 }
 
-// Serverless function handler for Vercel
-module.exports = async (req, res) => {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL || '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
-
-  // Handle OPTIONS preflight
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-
-  try {
+// Create serverless handler
+const handler = serverless(app, {
+  request: async (request, event, context) => {
+    // Set CORS headers
+    request.headers['access-control-allow-credentials'] = 'true';
+    request.headers['access-control-allow-origin'] = process.env.CLIENT_URL || '*';
+    request.headers['access-control-allow-methods'] = 'GET,OPTIONS,PATCH,DELETE,POST,PUT';
+    request.headers['access-control-allow-headers'] = 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization';
+    
     // Connect to database before handling request
     await connectToDatabase();
-    
-    // Handle request with Express app
-    app(req, res);
-  } catch (error) {
-    console.error('Serverless function error:', error);
-    
-    // Return error response
-    if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-        message: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
-    }
   }
-};
+});
+
+module.exports = handler;
