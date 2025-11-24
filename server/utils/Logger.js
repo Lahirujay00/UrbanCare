@@ -38,7 +38,12 @@ class Logger {
   static createLogger(module) {
     const logLevel = process.env.LOG_LEVEL || 'info';
     const logDir = process.env.LOG_DIR || 'logs';
-    const isServerless = process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.FUNCTIONS_WORKER_RUNTIME;
+    // Detect serverless environments (Vercel, AWS Lambda, Azure Functions)
+    const isServerless = process.env.VERCEL || 
+                         process.env.AWS_LAMBDA_FUNCTION_NAME || 
+                         process.env.FUNCTIONS_WORKER_RUNTIME ||
+                         process.env.LAMBDA_TASK_ROOT ||  // Vercel uses AWS Lambda
+                         process.env.VERCEL_ENV;  // Another Vercel indicator
 
     // Only create logs directory if NOT in serverless environment
     if (!isServerless) {
