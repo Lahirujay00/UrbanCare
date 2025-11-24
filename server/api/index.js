@@ -69,37 +69,53 @@ async function connectToDatabase() {
   }
 }
 
-// Wrap the handler to add CORS and database connection
-const handler = async (req, res) => {
+// Create the serverless handler once
+const serverlessHandler = serverless(app);
+
+// Allowed origins for CORS
+const allowedOrigins = [
+  'https://urban-care-front.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
+
+// Main handler with CORS and database connection
+module.exports = async (req, res) => {
   // Set CORS headers for all requests
-  const allowedOrigins = [
-    'https://urban-care-front.vercel.app',
-    'http://localhost:3000',
-    'http://localhost:5000'
-  ];
+  const origin = req.headers.origin || req.headers.Origin;
   
-  const origin = req.headers.origin;
   if (allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
-  } else if (process.env.CLIENT_URL) {
+  } else if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
     res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL);
+  } else {
+    // Default to first allowed origin
+    res.setHeader('Access-Control-Allow-Origin', 'https://urban-care-front.vercel.app');
   }
   
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
-  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
   
-  // Handle preflight OPTIONS request
+  // Handle preflight OPTIONS request immediately
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
   
-  // Connect to database before handling request
-  await connectToDatabase();
-  
-  // Pass to Express app via serverless-http
-  return serverless(app)(req, res);
+  try {
+    // Connect to database before handling request
+    await connectToDatabase();
+    
+    // Pass to Express app via serverless-http
+    return serverlessHandler(req, res);
+  } catch (error) {
+    console.error('Handler error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
 };
-
-module.exports = handler;
