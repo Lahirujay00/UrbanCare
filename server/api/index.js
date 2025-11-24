@@ -69,18 +69,37 @@ async function connectToDatabase() {
   }
 }
 
-// Create serverless handler
-const handler = serverless(app, {
-  request: async (request, event, context) => {
-    // Set CORS headers
-    request.headers['access-control-allow-credentials'] = 'true';
-    request.headers['access-control-allow-origin'] = process.env.CLIENT_URL || '*';
-    request.headers['access-control-allow-methods'] = 'GET,OPTIONS,PATCH,DELETE,POST,PUT';
-    request.headers['access-control-allow-headers'] = 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization';
-    
-    // Connect to database before handling request
-    await connectToDatabase();
+// Wrap the handler to add CORS and database connection
+const handler = async (req, res) => {
+  // Set CORS headers for all requests
+  const allowedOrigins = [
+    'https://urban-care-front.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5000'
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  } else if (process.env.CLIENT_URL) {
+    res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL);
   }
-});
+  
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+  
+  // Handle preflight OPTIONS request
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  // Connect to database before handling request
+  await connectToDatabase();
+  
+  // Pass to Express app via serverless-http
+  return serverless(app)(req, res);
+};
 
 module.exports = handler;
