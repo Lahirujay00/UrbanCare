@@ -1,5 +1,6 @@
 // Catch-all for /api/appointments/*
-const handler = require(__dirname + '/proxy.js');
+const path = require('path');
+const handler = require(path.join(__dirname, '..', 'proxy.js'));
 
 module.exports = async (req, res) => {
   // Build the full Express route path

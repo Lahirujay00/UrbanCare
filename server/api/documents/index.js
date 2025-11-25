@@ -1,5 +1,6 @@
 // Catch-all for /api/documents/*
-const handler = require(__dirname + '/proxy.js');
+const path = require('path');
+const handler = require(path.join(__dirname, '..', 'proxy.js'));
 
 module.exports = async (req, res) => {
   const path = req.url.startsWith('/') ? req.url : `/${req.url}`;
