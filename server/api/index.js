@@ -69,9 +69,6 @@ async function connectToDatabase() {
   }
 }
 
-// Create the serverless handler once
-const serverlessHandler = serverless(app);
-
 // Allowed origins for CORS
 const allowedOrigins = [
   'https://urban-care-front.vercel.app',
@@ -81,7 +78,7 @@ const allowedOrigins = [
 
 // Main handler with CORS and database connection
 module.exports = async (req, res) => {
-  // Set CORS headers for all requests
+  // Set CORS headers BEFORE anything else
   const origin = req.headers.origin || req.headers.Origin;
   
   if (allowedOrigins.includes(origin)) {
@@ -89,13 +86,13 @@ module.exports = async (req, res) => {
   } else if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
     res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL);
   } else {
-    // Default to first allowed origin
+    // Default to first allowed origin if no origin header or not in list
     res.setHeader('Access-Control-Allow-Origin', 'https://urban-care-front.vercel.app');
   }
   
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version');
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
   
   // Handle preflight OPTIONS request immediately
@@ -108,8 +105,9 @@ module.exports = async (req, res) => {
     // Connect to database before handling request
     await connectToDatabase();
     
-    // Pass to Express app via serverless-http
-    return serverlessHandler(req, res);
+    // Create and invoke serverless handler
+    const handler = serverless(app);
+    return handler(req, res);
   } catch (error) {
     console.error('Handler error:', error);
     res.status(500).json({

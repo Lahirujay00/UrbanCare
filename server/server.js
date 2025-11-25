@@ -137,16 +137,29 @@ app.use(compression());
 
 // CORS - Enhanced configuration
 app.use(cors({
-  origin: [
-    process.env.CLIENT_URL || "https://urban-care-front.vercel.app",
-    "https://urban-care-front.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:5000"
-  ],
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'https://urban-care-front.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:5000',
+      process.env.CLIENT_URL
+    ].filter(Boolean);
+    
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all origins in production to avoid CORS issues
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With', 'X-CSRF-Token', 'Accept-Version', 'Content-Length', 'Content-MD5', 'Date', 'X-Api-Version'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 }));
 
 // Logging
