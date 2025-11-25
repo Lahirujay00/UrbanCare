@@ -1,20 +1,6 @@
 {
   "version": 2,
-  "functions": {
-    "server/api/index.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    }
-  },
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/server/api/index.js"
-    },
-    {
-      "source": "/health",
-      "destination": "/server/api/index.js"
-    },
     {
       "source": "/(.*)",
       "destination": "/server/api/index.js"
