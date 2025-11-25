@@ -1,5 +1,5 @@
-// This file exists only to satisfy Vercel's entrypoint check
-// The actual serverless functions are in /api folder
-module.exports = () => {
-  console.log('This entry point is not used - serverless functions in /api handle all requests');
-};
+// Main entry point - redirects to serverless handler
+// This satisfies Vercel's entrypoint requirement while using serverless functions
+const handler = require('./server/api/index.js');
+
+module.exports = handler;
