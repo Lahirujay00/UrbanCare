@@ -6,16 +6,19 @@ const mongoose = require('mongoose');
 let app;
 try {
   app = require('../server');
+  console.log('✅ Express app loaded successfully');
+  console.log('App routes:', app._router?.stack?.filter(r => r.route || r.name === 'router').map(r => r.route?.path || r.name).join(', '));
 } catch (error) {
-  console.error('Error loading server:', error);
+  console.error('❌ Error loading server:', error);
   // Create a minimal Express app as fallback
   const express = require('express');
   app = express();
-  app.get('*', (req, res) => {
+  app.all('*', (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to load application',
-      message: error.message
+      message: error.message,
+      stack: error.stack
     });
   });
 }
@@ -69,6 +72,9 @@ async function connectToDatabase() {
   }
 }
 
+// Create the serverless handler once
+const serverlessHandler = serverless(app);
+
 // Allowed origins for CORS
 const allowedOrigins = [
   'https://urban-care-front.vercel.app',
@@ -78,7 +84,7 @@ const allowedOrigins = [
 
 // Main handler with CORS and database connection
 module.exports = async (req, res) => {
-  // Set CORS headers BEFORE anything else
+  // Set CORS headers for all requests
   const origin = req.headers.origin || req.headers.Origin;
   
   if (allowedOrigins.includes(origin)) {
@@ -86,13 +92,13 @@ module.exports = async (req, res) => {
   } else if (process.env.CLIENT_URL && origin === process.env.CLIENT_URL) {
     res.setHeader('Access-Control-Allow-Origin', process.env.CLIENT_URL);
   } else {
-    // Default to first allowed origin if no origin header or not in list
+    // Default to first allowed origin
     res.setHeader('Access-Control-Allow-Origin', 'https://urban-care-front.vercel.app');
   }
   
   res.setHeader('Access-Control-Allow-Credentials', 'true');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token, Accept-Version, Content-Length, Content-MD5, Date, X-Api-Version');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin, X-CSRF-Token');
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
   
   // Handle preflight OPTIONS request immediately
@@ -105,9 +111,8 @@ module.exports = async (req, res) => {
     // Connect to database before handling request
     await connectToDatabase();
     
-    // Create and invoke serverless handler
-    const handler = serverless(app);
-    return handler(req, res);
+    // Pass to Express app via serverless-http
+    return serverlessHandler(req, res);
   } catch (error) {
     console.error('Handler error:', error);
     res.status(500).json({
