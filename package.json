@@ -11,7 +11,7 @@
     "server-only": "cd server && npm run dev",
     "client-only": "cd client && npm start",
     "build": "cd client && npm install && npm run build",
-    "vercel-build": "cd client && npm install && npm run build",
+    "vercel-build": "echo 'Backend deployment - no build needed'",
     "start": "cd server && npm start",
     "start-prod": "concurrently \"npm run start\" \"npm run serve\"",
     "serve": "cd client && npx serve -s build -p 3000",
