@@ -30,11 +30,13 @@ let cachedDb = null;
 async function connectToDatabase() {
   // If already connected, return immediately
   if (cachedDb && mongoose.connection.readyState === 1) {
+    console.log('Using cached MongoDB connection');
     return cachedDb;
   }
 
   // If connection is in progress, wait for it
   if (isConnecting) {
+    console.log('MongoDB connection in progress, waiting...');
     await new Promise(resolve => setTimeout(resolve, 100));
     return connectToDatabase();
   }
@@ -48,25 +50,30 @@ async function connectToDatabase() {
       return null;
     }
 
-    console.log('Connecting to MongoDB...');
+    console.log('Initiating new MongoDB connection...');
     
-    await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      serverSelectionTimeoutMS: 5000,
-      socketTimeoutMS: 45000,
-      maxPoolSize: 10,
-      minPoolSize: 1,
+    // Create a timeout promise
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('MongoDB connection timeout after 5s')), 5000)
+    );
+    
+    // Race between connection and timeout
+    const connectionPromise = mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 4000,
+      connectTimeoutMS: 4000,
+      socketTimeoutMS: 4000,
     });
+    
+    await Promise.race([connectionPromise, timeoutPromise]);
     
     cachedDb = mongoose.connection;
     isConnecting = false;
-    console.log('MongoDB connected successfully');
+    console.log('✅ MongoDB connected successfully');
     return cachedDb;
   } catch (err) {
     isConnecting = false;
     cachedDb = null;
-    console.error('MongoDB connection error:', err.message);
+    console.error('❌ MongoDB connection error:', err.message);
     // Don't throw - allow request to proceed without DB
     return null;
   }
