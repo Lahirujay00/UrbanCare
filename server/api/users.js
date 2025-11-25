@@ -1,5 +1,5 @@
-// Catch-all for /api/users/*
-const handler = require('../proxy');
+// Proxy handler for /api/users
+const handler = require('./proxy');
 
 module.exports = async (req, res) => {
   req.url = `/api/users${req.url}`;
