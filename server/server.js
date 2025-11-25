@@ -178,9 +178,16 @@ app.get('/logo192.png', (req, res) => res.status(204).end());
 app.get('/manifest.json', (req, res) => res.status(204).end());
 app.get('/*.hot-update.json', (req, res) => res.status(204).end());
 
-// Handle preflight OPTIONS requests for all API routes
-app.options('/api/*', (req, res) => {
+// Handle preflight OPTIONS requests for all routes
+app.options('*', (req, res) => {
+  console.log(`✅ OPTIONS request handled: ${req.url}`);
   res.status(200).end();
+});
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+  next();
 });
 
 // API routes
