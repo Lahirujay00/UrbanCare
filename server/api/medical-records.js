@@ -1,7 +1,9 @@
 // Catch-all for /api/medical-records/*
-const handler = require('./proxy');
+const handler = require(__dirname + '/proxy.js');
 
 module.exports = async (req, res) => {
-  req.url = `/api/medical-records${req.url}`;
+  const path = req.url.startsWith('/') ? req.url : `/${req.url}`;
+  req.url = `/api/medical-records${path}`;
+  console.log(`🔵 Medical Records: ${req.method} ${req.url}`);
   return handler(req, res);
 };

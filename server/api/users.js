@@ -1,7 +1,9 @@
 // Catch-all for /api/users/*
-const handler = require('./proxy');
+const handler = require(__dirname + '/proxy.js');
 
 module.exports = async (req, res) => {
-  req.url = `/api/users${req.url}`;
+  const path = req.url.startsWith('/') ? req.url : `/${req.url}`;
+  req.url = `/api/users${path}`;
+  console.log(`🔵 Users: ${req.method} ${req.url}`);
   return handler(req, res);
 };
