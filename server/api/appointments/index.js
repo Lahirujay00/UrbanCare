@@ -1,11 +1,20 @@
-// Catch-all for /api/appointments/*
-const path = require('path');
-const handler = require(path.join(__dirname, '..', 'proxy.js'));
-
+// Simple test for /api/appointments
 module.exports = async (req, res) => {
-  // Build the full Express route path
-  const path = req.url.startsWith('/') ? req.url : `/${req.url}`;
-  req.url = `/api/appointments${path}`;
-  console.log(`🔵 Appointments: ${req.method} ${req.url}`);
-  return handler(req, res);
+  console.log(`🔵 Appointments endpoint hit: ${req.method} ${req.url}`);
+  
+  res.setHeader('Access-Control-Allow-Origin', 'https://urban-care-front.vercel.app');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
+  return res.status(200).json({
+    success: true,
+    message: 'Appointments endpoint working!',
+    data: {
+      appointments: []
+    }
+  });
 };
