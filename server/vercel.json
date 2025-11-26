@@ -13,19 +13,15 @@
       "memory": 1024,
       "maxDuration": 10
     },
-    "api/doctors.js": {
+    "api/users/*.js": {
       "memory": 1024,
       "maxDuration": 10
     },
-    "api/health-cards.js": {
+    "api/health-cards/patient/*.js": {
       "memory": 1024,
       "maxDuration": 10
     },
-    "api/documents.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/nic-status.js": {
+    "api/documents/patient/*.js": {
       "memory": 1024,
       "maxDuration": 10
     },
