@@ -1,20 +1,32 @@
 // Standalone serverless function for users
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const User = require('../../models/User');
 
 let cachedDb = null;
+let User = null;
 
 async function connectToDatabase() {
   if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
   
-  await mongoose.connect(process.env.MONGODB_URI, {
-    serverSelectionTimeoutMS: 5000,
-    connectTimeoutMS: 5000,
-  });
-  cachedDb = mongoose.connection;
-  return cachedDb;
+  try {
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+    });
+    cachedDb = mongoose.connection;
+    console.log('✅ MongoDB connected');
+    
+    // Load model after connection
+    if (!User) {
+      User = require('../../models/User');
+    }
+    
+    return cachedDb;
+  } catch (err) {
+    console.error('❌ MongoDB error:', err.message);
+    throw err;
+  }
 }
 
 const allowedOrigins = ['https://urban-care-front.vercel.app', 'http://localhost:3000'];
@@ -54,11 +66,11 @@ module.exports = async (req, res) => {
       data: { user } 
     });
   } catch (error) {
-    console.error('❌ Users error:', error);
+    console.error('❌ Users error:', error.message, error.stack);
     res.status(500).json({ 
       success: false, 
       message: 'Server error',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      error: error.message
     });
   }
 };
