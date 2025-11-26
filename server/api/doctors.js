@@ -1,26 +1,30 @@
 // Standalone serverless function for /api/doctors (maps to /users/doctors via rewrite)
-const mongoose = require('mongoose');
+const { MongoClient } = require('mongodb');
 
+let cachedClient = null;
 let cachedDb = null;
-let User = null;
 
 async function connectToDatabase() {
-  if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb };
+  }
+  
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
   
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    const client = new MongoClient(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
     });
-    cachedDb = mongoose.connection;
+    
+    await client.connect();
+    const db = client.db();
+    
+    cachedClient = client;
+    cachedDb = db;
+    
     console.log('✅ MongoDB connected');
-    
-    if (!User) {
-      User = require('../models/User');
-    }
-    
-    return cachedDb;
+    return { client, db };
   } catch (err) {
     console.error('❌ MongoDB error:', err.message);
     throw err;
@@ -46,36 +50,36 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
   try {
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     // Build query for active doctors
     const { specialization, department, search } = req.query;
     let query = { role: 'doctor', isActive: true };
     
     if (specialization) {
-      query.specialization = specialization;
+      query.specialization = { $regex: specialization, $options: 'i' };
     }
     
     if (department) {
-      query.department = department;
+      query.department = { $regex: department, $options: 'i' };
     }
     
     if (search) {
-      const searchRegex = new RegExp(search, 'i');
       query.$or = [
-        { firstName: searchRegex },
-        { lastName: searchRegex },
-        { specialization: searchRegex }
+        { firstName: { $regex: search, $options: 'i' } },
+        { lastName: { $regex: search, $options: 'i' } },
+        { specialization: { $regex: search, $options: 'i' } }
       ];
     }
     
     console.log('📋 Fetching doctors with query:', JSON.stringify(query));
     
-    const doctors = await User.find(query)
-      .select('-password -sessionTokens -__v')
-      .sort('firstName')
-      .lean()
-      .limit(100);
+    const doctors = await db.collection('users')
+      .find(query)
+      .project({ password: 0, sessionTokens: 0, __v: 0 })
+      .sort({ firstName: 1 })
+      .limit(100)
+      .toArray();
     
     console.log('✅ Found doctors:', doctors.length);
     
