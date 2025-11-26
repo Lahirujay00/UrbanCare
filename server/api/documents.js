@@ -1,31 +1,31 @@
 // Standalone serverless function for documents
-const mongoose = require('mongoose');
+const { MongoClient, ObjectId } = require('mongodb');
 const jwt = require('jsonwebtoken');
 
+let cachedClient = null;
 let cachedDb = null;
-let Document = null;
-let User = null;
 
 async function connectToDatabase() {
-  if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
+  if (cachedClient && cachedDb) {
+    return { client: cachedClient, db: cachedDb };
+  }
+  
   if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI not set');
   
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    const client = new MongoClient(process.env.MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
     });
-    cachedDb = mongoose.connection;
+    
+    await client.connect();
+    const db = client.db();
+    
+    cachedClient = client;
+    cachedDb = db;
+    
     console.log('✅ MongoDB connected');
-    
-    if (!User) {
-      User = require('../models/User');
-    }
-    if (!Document) {
-      Document = require('../models/Document');
-    }
-    
-    return cachedDb;
+    return { client, db };
   } catch (err) {
     console.error('❌ MongoDB error:', err.message);
     throw err;
@@ -51,7 +51,7 @@ module.exports = async (req, res) => {
   if (req.method !== 'GET') return res.status(405).json({ success: false, message: 'Method not allowed' });
 
   try {
-    await connectToDatabase();
+    const { db } = await connectToDatabase();
     
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
@@ -84,12 +84,22 @@ module.exports = async (req, res) => {
     
     console.log('📋 Fetching documents for patient:', patientId);
     
-    const documents = await Document.find({ 
-      patient: patientId 
-    })
-    .populate('uploadedBy', 'firstName lastName role')
-    .sort('-uploadDate')
-    .limit(100);
+    const documents = await db.collection('documents')
+      .find({ patient: new ObjectId(patientId) })
+      .sort({ uploadDate: -1 })
+      .limit(100)
+      .toArray();
+    
+    // Populate uploadedBy field
+    for (const doc of documents) {
+      if (doc.uploadedBy) {
+        const user = await db.collection('users').findOne(
+          { _id: new ObjectId(doc.uploadedBy) },
+          { projection: { firstName: 1, lastName: 1, role: 1 } }
+        );
+        if (user) doc.uploadedBy = user;
+      }
+    }
     
     console.log('✅ Found documents:', documents.length);
     res.json({
