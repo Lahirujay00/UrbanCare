@@ -41,6 +41,7 @@ function setCorsHeaders(req, res) {
 
 module.exports = async (req, res) => {
   console.log('🔵 Appointments endpoint hit');
+  console.log('Query params:', req.query);
   setCorsHeaders(req, res);
   
   if (req.method === 'OPTIONS') return res.status(200).end();
@@ -68,9 +69,23 @@ module.exports = async (req, res) => {
       });
     }
     
+    // Build query for appointments
+    const query = { patient: decoded.id };
+    
+    // Handle status filter (can be comma-separated)
+    if (req.query.status) {
+      const statuses = req.query.status.split(',');
+      if (statuses.length > 1) {
+        query.status = { $in: statuses };
+      } else {
+        query.status = statuses[0];
+      }
+      console.log('📊 Filtering by status:', query.status);
+    }
+    
     // Get appointments for this user
-    console.log('📋 Fetching appointments for user:', decoded.id);
-    const appointments = await Appointment.find({ patient: decoded.id })
+    console.log('📋 Fetching appointments for user:', decoded.id, 'with query:', query);
+    const appointments = await Appointment.find(query)
       .populate('doctor', 'firstName lastName specialization')
       .sort('-appointmentDate -appointmentTime');
     
