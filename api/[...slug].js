@@ -1,5 +1,5 @@
 // Catch-all API route that proxies to Express app
-const handler = require('../server/api/index.js');
+const handler = require('../server/api/_old-index.js');
 
 module.exports = async (req, res) => {
   // Vercel strips /api prefix from the URL when routing to /api/[...slug].js
