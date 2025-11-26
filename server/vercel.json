@@ -13,24 +13,12 @@
       "memory": 1024,
       "maxDuration": 10
     },
-    "api/users/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/health-cards/patient/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
-    "api/documents/patient/*.js": {
-      "memory": 1024,
-      "maxDuration": 10
-    },
     "api/auth/*.js": {
       "memory": 1024,
       "maxDuration": 10
     },
     "api/[...slug].js": {
-      "memory": 1024,
+      "memory": 3008,
       "maxDuration": 30
     }
   }
