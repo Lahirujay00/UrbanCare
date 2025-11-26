@@ -1,11 +1,19 @@
 {
   "version": 2,
   "functions": {
-    "api/*.js": {
+    "api/appointments.js": {
       "memory": 1024,
-      "maxDuration": 30
+      "maxDuration": 10
+    },
+    "api/users.js": {
+      "memory": 1024,
+      "maxDuration": 10
     },
     "api/auth/*.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
+    "api/[...slug].js": {
       "memory": 1024,
       "maxDuration": 30
     }
