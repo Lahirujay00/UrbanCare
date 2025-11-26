@@ -19,7 +19,7 @@ async function connectToDatabase() {
     
     // Load model after connection
     if (!User) {
-      User = require('../../models/User');
+      User = require('../models/User');
     }
     
     return cachedDb;

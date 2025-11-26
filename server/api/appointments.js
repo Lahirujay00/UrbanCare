@@ -19,7 +19,7 @@ async function connectToDatabase() {
     
     // Load model after connection
     if (!Appointment) {
-      Appointment = require('../../models/Appointment');
+      Appointment = require('../models/Appointment');
     }
     
     return cachedDb;
