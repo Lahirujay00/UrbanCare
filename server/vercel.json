@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "rewrites": [
+    { "source": "/api/users/doctors", "destination": "/api/doctors" },
+    { "source": "/api/users/nic-status", "destination": "/api/nic-status" },
+    { "source": "/api/health-cards/patient/:id", "destination": "/api/health-cards?patientId=:id" },
+    { "source": "/api/documents/patient/:id", "destination": "/api/documents?patientId=:id" }
+  ],
   "functions": {
     "api/appointments.js": {
       "memory": 1024,
@@ -10,6 +16,22 @@
       "maxDuration": 10
     },
     "api/medical-records.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
+    "api/doctors.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
+    "api/nic-status.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
+    "api/health-cards.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
+    "api/documents.js": {
       "memory": 1024,
       "maxDuration": 10
     },

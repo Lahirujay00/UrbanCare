@@ -1,7 +1,9 @@
-// Standalone serverless function for /api/doctors (maps to /users/doctors via rewrite)
+// Standalone serverless function for documents
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 
 let cachedDb = null;
+let Document = null;
 let User = null;
 
 async function connectToDatabase() {
@@ -18,6 +20,9 @@ async function connectToDatabase() {
     
     if (!User) {
       User = require('../models/User');
+    }
+    if (!Document) {
+      Document = require('../models/Document');
     }
     
     return cachedDb;
@@ -38,7 +43,7 @@ function setCorsHeaders(req, res) {
 }
 
 module.exports = async (req, res) => {
-  console.log('🔵 Doctors endpoint hit');
+  console.log('🔵 Documents endpoint hit');
   console.log('Query params:', req.query);
   setCorsHeaders(req, res);
   
@@ -48,41 +53,52 @@ module.exports = async (req, res) => {
   try {
     await connectToDatabase();
     
-    // Build query for active doctors (exactly like the route)
-    const { specialization, department, search } = req.query;
-    let query = { role: 'doctor', isActive: true };
-    
-    if (specialization) {
-      query.specialization = new RegExp(specialization, 'i');
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      console.error('❌ No token provided');
+      return res.status(401).json({ success: false, message: 'No token provided' });
     }
     
-    if (department) {
-      query.department = new RegExp(department, 'i');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('✅ Token verified for user:', decoded.id || decoded.userId);
+    } catch (jwtError) {
+      console.error('❌ JWT verification failed:', jwtError.message);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid or expired token'
+      });
     }
     
-    if (search) {
-      query.$or = [
-        { firstName: new RegExp(search, 'i') },
-        { lastName: new RegExp(search, 'i') },
-        { specialization: new RegExp(search, 'i') }
-      ];
+    const userId = decoded.id || decoded.userId;
+    if (!userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid token structure' 
+      });
     }
     
-    console.log('📋 Fetching doctors with query:', JSON.stringify(query));
+    // Get patientId from query parameter (from rewrite) or use userId
+    const patientId = req.query.patientId || userId;
     
-    const doctors = await User.find(query)
-      .select('-password')
-      .sort({ firstName: 1 });
+    console.log('📋 Fetching documents for patient:', patientId);
     
-    console.log('✅ Found doctors:', doctors.length);
+    const documents = await Document.find({ 
+      patient: patientId 
+    })
+    .populate('uploadedBy', 'firstName lastName role')
+    .sort('-uploadDate')
+    .limit(100);
     
+    console.log('✅ Found documents:', documents.length);
     res.json({
       success: true,
-      count: doctors.length,
-      data: { doctors }
+      count: documents.length,
+      data: { documents }
     });
   } catch (error) {
-    console.error('❌ Doctors error:', error.message, error.stack);
+    console.error('❌ Documents error:', error.message, error.stack);
     res.status(500).json({ 
       success: false, 
       message: 'Server error',
