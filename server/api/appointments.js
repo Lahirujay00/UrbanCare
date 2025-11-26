@@ -59,7 +59,8 @@ module.exports = async (req, res) => {
     let decoded;
     try {
       decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('✅ Token verified for user:', decoded.id);
+      console.log('✅ Token decoded:', JSON.stringify(decoded));
+      console.log('✅ Token verified for user:', decoded.id || decoded.userId);
     } catch (jwtError) {
       console.error('❌ JWT verification failed:', jwtError.message);
       return res.status(401).json({ 
@@ -69,8 +70,17 @@ module.exports = async (req, res) => {
       });
     }
     
-    // Build query for appointments
-    const query = { patient: decoded.id };
+    // Build query for appointments (handle both id and userId)
+    const userId = decoded.id || decoded.userId;
+    if (!userId) {
+      console.error('❌ No user ID in token:', decoded);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid token structure' 
+      });
+    }
+    
+    const query = { patient: userId };
     
     // Handle status filter (can be comma-separated)
     if (req.query.status) {
@@ -84,7 +94,7 @@ module.exports = async (req, res) => {
     }
     
     // Get appointments for this user
-    console.log('📋 Fetching appointments for user:', decoded.id, 'with query:', query);
+    console.log('📋 Fetching appointments for user:', userId, 'with query:', JSON.stringify(query));
     const appointments = await Appointment.find(query)
       .populate('doctor', 'firstName lastName specialization')
       .sort('-appointmentDate -appointmentTime');

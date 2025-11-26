@@ -51,16 +51,41 @@ module.exports = async (req, res) => {
     
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
+      console.error('❌ No token provided');
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('✅ Token decoded:', JSON.stringify(decoded));
+    } catch (jwtError) {
+      console.error('❌ JWT verification failed:', jwtError.message);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid or expired token',
+        error: jwtError.message 
+      });
+    }
+    
+    // Handle both id and userId
+    const userId = decoded.id || decoded.userId;
+    if (!userId) {
+      console.error('❌ No user ID in token:', decoded);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid token structure' 
+      });
+    }
+    
+    const user = await User.findById(userId);
     
     if (!user) {
+      console.error('❌ User not found:', userId);
       return res.status(404).json({ success: false, message: 'User not found' });
     }
     
+    console.log('✅ User found:', user.email);
     res.json({ 
       success: true, 
       data: { user } 
