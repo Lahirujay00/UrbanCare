@@ -48,31 +48,34 @@ module.exports = async (req, res) => {
   try {
     await connectToDatabase();
     
-    // Build query for active doctors (exactly like the route)
+    // Build query for active doctors
     const { specialization, department, search } = req.query;
     let query = { role: 'doctor', isActive: true };
     
     if (specialization) {
-      query.specialization = new RegExp(specialization, 'i');
+      query.specialization = specialization;
     }
     
     if (department) {
-      query.department = new RegExp(department, 'i');
+      query.department = department;
     }
     
     if (search) {
+      const searchRegex = new RegExp(search, 'i');
       query.$or = [
-        { firstName: new RegExp(search, 'i') },
-        { lastName: new RegExp(search, 'i') },
-        { specialization: new RegExp(search, 'i') }
+        { firstName: searchRegex },
+        { lastName: searchRegex },
+        { specialization: searchRegex }
       ];
     }
     
     console.log('📋 Fetching doctors with query:', JSON.stringify(query));
     
     const doctors = await User.find(query)
-      .select('-password')
-      .sort({ firstName: 1 });
+      .select('-password -sessionTokens -__v')
+      .sort('firstName')
+      .lean()
+      .limit(100);
     
     console.log('✅ Found doctors:', doctors.length);
     
