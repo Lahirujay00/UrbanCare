@@ -9,6 +9,10 @@
       "memory": 1024,
       "maxDuration": 10
     },
+    "api/medical-records.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    },
     "api/auth/*.js": {
       "memory": 1024,
       "maxDuration": 10
