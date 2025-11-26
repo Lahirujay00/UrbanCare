@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 
 let cachedDb = null;
 let Appointment = null;
+let User = null;
 
 async function connectToDatabase() {
   if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
@@ -17,7 +18,10 @@ async function connectToDatabase() {
     cachedDb = mongoose.connection;
     console.log('✅ MongoDB connected');
     
-    // Load model after connection
+    // Load models after connection
+    if (!User) {
+      User = require('../models/User');
+    }
     if (!Appointment) {
       Appointment = require('../models/Appointment');
     }
