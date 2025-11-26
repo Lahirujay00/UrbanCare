@@ -168,6 +168,9 @@ module.exports = async (req, res) => {
     await user.save();
 
     // Generate tokens
+    console.log('JWT_EXPIRE:', process.env.JWT_EXPIRE);
+    console.log('JWT_REFRESH_EXPIRE:', process.env.JWT_REFRESH_EXPIRE);
+    
     const token = user.generateAuthToken();
     const refreshToken = user.generateRefreshToken();
 
