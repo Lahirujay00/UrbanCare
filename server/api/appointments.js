@@ -51,16 +51,30 @@ module.exports = async (req, res) => {
     
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
+      console.error('❌ No token in request');
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
     
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('✅ Token verified for user:', decoded.id);
+    } catch (jwtError) {
+      console.error('❌ JWT verification failed:', jwtError.message);
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid or expired token',
+        error: jwtError.message 
+      });
+    }
     
     // Get appointments for this user
+    console.log('📋 Fetching appointments for user:', decoded.id);
     const appointments = await Appointment.find({ patient: decoded.id })
       .populate('doctor', 'firstName lastName specialization')
       .sort('-appointmentDate -appointmentTime');
     
+    console.log('✅ Found appointments:', appointments.length);
     res.json({
       success: true,
       data: { appointments }
