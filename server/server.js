@@ -39,7 +39,7 @@ const server = createServer(app);
 // Socket.io setup
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: process.env.CLIENT_URL || "https://urban-care-front.vercel.app",
     methods: ["GET", "POST"]
   }
 });
@@ -47,50 +47,51 @@ const io = new Server(server, {
 // Make io accessible to routes
 app.set('io', io);
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 30000, // Increase timeout to 30 seconds
-  socketTimeoutMS: 45000,
-})
-.then(async () => {
-  console.log('MongoDB connected successfully');
+// MongoDB Connection - handled by api/index.js for serverless
+// For local development, connect immediately
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+  })
+  .then(async () => {
+    console.log('MongoDB connected successfully');
 
-  // Auto-setup healthcare manager user if it doesn't exist
-  try {
-    const User = require('./models/User');
-
-    const existingManager = await User.findOne({ email: 'manager@urbancare.com' });
-    if (!existingManager) {
-      const managerUser = new User({
-        firstName: 'Healthcare',
-        lastName: 'Manager',
-        email: 'manager@urbancare.com',
-        password: 'Manager123!', // Plain password - will be hashed by pre-save middleware
-        phone: '+1-555-0100',
-        role: 'manager',
-        isActive: true,
-        isEmailVerified: true,
-        address: {
-          street: '123 Healthcare Street',
-          city: 'Healthcare City',
-          state: 'HC',
-          zipCode: '12345',
-          country: 'USA'
+    // Auto-setup healthcare manager user if it doesn't exist (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const User = require('./models/User');
+        const existingManager = await User.findOne({ email: 'manager@urbancare.com' });
+        if (!existingManager) {
+          const managerUser = new User({
+            firstName: 'Healthcare',
+            lastName: 'Manager',
+            email: 'manager@urbancare.com',
+            password: 'Manager123!',
+            phone: '+1-555-0100',
+            role: 'manager',
+            isActive: true,
+            isEmailVerified: true,
+            address: {
+              street: '123 Healthcare Street',
+              city: 'Healthcare City',
+              state: 'HC',
+              zipCode: '12345',
+              country: 'USA'
+            }
+          });
+          await managerUser.save();
+          console.log('Default healthcare manager user created');
         }
-      });
-
-      await managerUser.save();
-      console.log('Default healthcare manager user created automatically');
-      console.log('Email: manager@urbancare.com');
-      console.log('Password: Manager123!');
+      } catch (error) {
+        console.error('Error auto-creating manager:', error.message);
+      }
     }
-  } catch (error) {
-    console.error('Error auto-creating healthcare manager user:', error.message);
-  }
-})
-.catch((err) => console.error('MongoDB connection error:', err));
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
+}
 
 // Security middleware
 app.use(helmet({
@@ -137,7 +138,8 @@ app.use(compression());
 // CORS - Enhanced configuration
 app.use(cors({
   origin: [
-    process.env.CLIENT_URL || "http://localhost:3000",
+    process.env.CLIENT_URL || "https://urban-care-front.vercel.app",
+    "https://urban-care-front.vercel.app",
     "http://localhost:3000",
     "http://localhost:5000"
   ],
@@ -175,6 +177,18 @@ app.get('/favicon.ico', (req, res) => res.status(204).end());
 app.get('/logo192.png', (req, res) => res.status(204).end());
 app.get('/manifest.json', (req, res) => res.status(204).end());
 app.get('/*.hot-update.json', (req, res) => res.status(204).end());
+
+// Handle preflight OPTIONS requests for all routes
+app.options('*', (req, res) => {
+  console.log(`✅ OPTIONS request handled: ${req.url}`);
+  res.status(200).end();
+});
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.url} - Origin: ${req.headers.origin || 'none'}`);
+  next();
+});
 
 // API routes
 app.use('/api/auth', authRoutes);
@@ -215,24 +229,41 @@ io.on('connection', (socket) => {
   });
 });
 
+// Debug middleware to log unmatched routes
+app.use((req, res, next) => {
+  console.log(`⚠️  Unmatched route: ${req.method} ${req.url}`);
+  next();
+});
+
 // Error handling middleware
 app.use(notFound);
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-  console.log(`API Base URL: http://localhost:${PORT}/api`);
-  console.log(`Health Check: http://localhost:${PORT}/health`);
-});
+// Start server only in non-serverless environment
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+  connectToDatabase()
+    .then(() => {
+      server.listen(PORT, () => {
+        console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+        console.log(`API Base URL: http://localhost:${PORT}/api`);
+        console.log(`Health Check: http://localhost:${PORT}/health`);
+      });
+    })
+    .catch(err => {
+      console.error('Failed to connect to database:', err);
+      process.exit(1);
+    });
+}
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
   console.log(`Unhandled Rejection: ${err.message}`);
-  server.close(() => {
-    process.exit(1);
-  });
+  if (server && typeof server.close === 'function') {
+    server.close(() => {
+      process.exit(1);
+    });
+  }
 });
 
 // Handle uncaught exceptions
@@ -241,4 +272,5 @@ process.on('uncaughtException', (err) => {
   process.exit(1);
 });
 
+// Export app for Vercel serverless
 module.exports = app;

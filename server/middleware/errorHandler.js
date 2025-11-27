@@ -34,6 +34,11 @@ const errorHandler = (err, req, res, next) => {
   // Generate unique error ID for tracking
   const errorId = `ERR_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   
+  // Log error immediately to console for Vercel visibility
+  console.error(`🔴 ERROR [${errorId}]:`, err.message);
+  console.error('Stack:', err.stack);
+  console.error('Request:', req.method, req.url);
+  
   // Log error with context
   logger.error('Application error occurred:', {
     errorId,

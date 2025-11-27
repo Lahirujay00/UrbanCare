@@ -1,0 +1,15 @@
+node_modules
+.env
+.env.local
+*.log
+.DS_Store
+coverage
+.vscode
+*.test.js
+server/tests
+server/coverage
+server/logs
+client/node_modules
+server/uploads/documents/*
+server/uploads/nic-documents/*
+.git

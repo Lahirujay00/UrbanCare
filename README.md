@@ -248,6 +248,18 @@ cd client && npm test
 4. Add tests if applicable
 5. Submit a pull request
 
+## 🌐 Live Deployment
+
+- **Frontend:** https://urban-care-front.vercel.app
+- **Backend API:** https://urban-care-back.vercel.app/api
+- **Health Check:** https://urban-care-back.vercel.app/health
+
+## 🔗 Documentation
+
+- [Deployment Guide](./DEPLOYMENT.md) - Complete deployment instructions
+- [Deployment Checklist](./DEPLOYMENT_CHECKLIST.md) - Step-by-step deployment checklist
+- [Deployment URLs](./DEPLOYMENT_URLS.md) - Production URLs and environment variables
+
 ## 📄 License
 
 This project is licensed under the MIT License.

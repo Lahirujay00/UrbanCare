@@ -85,7 +85,7 @@ export const AuthProvider = ({ children }) => {
             dispatch({
               type: 'AUTH_SUCCESS',
               payload: {
-                user: response.data.data.user,
+                user: response.data.data, // data is the user object directly
                 token,
                 refreshToken: localStorage.getItem('refreshToken'),
               },

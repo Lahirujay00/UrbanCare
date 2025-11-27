@@ -38,11 +38,24 @@ class Logger {
   static createLogger(module) {
     const logLevel = process.env.LOG_LEVEL || 'info';
     const logDir = process.env.LOG_DIR || 'logs';
+    // Detect serverless environments (Vercel, AWS Lambda, Azure Functions)
+    const isServerless = process.env.VERCEL || 
+                         process.env.AWS_LAMBDA_FUNCTION_NAME || 
+                         process.env.FUNCTIONS_WORKER_RUNTIME ||
+                         process.env.LAMBDA_TASK_ROOT ||  // Vercel uses AWS Lambda
+                         process.env.VERCEL_ENV;  // Another Vercel indicator
 
-    // Ensure logs directory exists
-    const fs = require('fs');
-    if (!fs.existsSync(logDir)) {
-      fs.mkdirSync(logDir, { recursive: true });
+    // Only create logs directory if NOT in serverless environment
+    if (!isServerless) {
+      const fs = require('fs');
+      if (!fs.existsSync(logDir)) {
+        try {
+          fs.mkdirSync(logDir, { recursive: true });
+        } catch (err) {
+          // Ignore if we can't create directory (e.g., read-only filesystem)
+          console.warn('Could not create logs directory:', err.message);
+        }
+      }
     }
 
     // Custom format for logs
@@ -67,67 +80,81 @@ class Logger {
 
     const transports = [];
 
-    // Console transport for development
-    if (process.env.NODE_ENV !== 'production') {
+    // Console transport - always add for serverless, or for development
+    if (isServerless || process.env.NODE_ENV !== 'production') {
       transports.push(
         new winston.transports.Console({
-          format: consoleFormat,
+          format: isServerless ? logFormat : consoleFormat, // Use structured logs for serverless
           level: logLevel
         })
       );
     }
 
-    // File transports
-    transports.push(
-      // Error logs
-      new winston.transports.File({
-        filename: path.join(logDir, 'error.log'),
-        level: 'error',
-        format: logFormat,
-        maxsize: 5242880, // 5MB
-        maxFiles: 5
-      }),
-      // Combined logs
-      new winston.transports.File({
-        filename: path.join(logDir, 'combined.log'),
-        format: logFormat,
-        maxsize: 5242880, // 5MB
-        maxFiles: 5
-      })
-    );
-
-    // Module-specific log file
-    if (module !== 'app') {
+    // File transports - ONLY if NOT in serverless environment
+    if (!isServerless) {
       transports.push(
+        // Error logs
         new winston.transports.File({
-          filename: path.join(logDir, `${module.toLowerCase()}.log`),
+          filename: path.join(logDir, 'error.log'),
+          level: 'error',
           format: logFormat,
           maxsize: 5242880, // 5MB
-          maxFiles: 3
+          maxFiles: 5
+        }),
+        // Combined logs
+        new winston.transports.File({
+          filename: path.join(logDir, 'combined.log'),
+          format: logFormat,
+          maxsize: 5242880, // 5MB
+          maxFiles: 5
         })
       );
+
+      // Module-specific log file
+      if (module !== 'app') {
+        transports.push(
+          new winston.transports.File({
+            filename: path.join(logDir, `${module.toLowerCase()}.log`),
+            format: logFormat,
+            maxsize: 5242880, // 5MB
+            maxFiles: 3
+          })
+        );
+      }
     }
 
-    return winston.createLogger({
+    const loggerConfig = {
       level: logLevel,
       format: logFormat,
       defaultMeta: { module },
-      transports,
-      // Handle uncaught exceptions
-      exceptionHandlers: [
+      transports
+    };
+
+    // Add exception and rejection handlers ONLY if NOT in serverless
+    if (!isServerless) {
+      loggerConfig.exceptionHandlers = [
         new winston.transports.File({
           filename: path.join(logDir, 'exceptions.log'),
           format: logFormat
         })
-      ],
-      // Handle unhandled promise rejections
-      rejectionHandlers: [
+      ];
+      loggerConfig.rejectionHandlers = [
         new winston.transports.File({
           filename: path.join(logDir, 'rejections.log'),
           format: logFormat
         })
-      ]
-    });
+      ];
+    } else {
+      // In serverless, just log to console
+      loggerConfig.exceptionHandlers = [
+        new winston.transports.Console({ format: logFormat })
+      ];
+      loggerConfig.rejectionHandlers = [
+        new winston.transports.Console({ format: logFormat })
+      ];
+    }
+
+    return winston.createLogger(loggerConfig);
   }
 
   /**

@@ -1,14 +1,19 @@
 const axios = require('axios');
 
-const API_BASE = 'http://localhost:5000/api';
+// Update API_BASE to test production or local
+// Production: 'https://urban-care-back.vercel.app/api'
+// Local: 'http://localhost:5000/api'
+const API_BASE = process.env.API_URL || 'http://localhost:5000/api';
+const HEALTH_URL = API_BASE.replace('/api', '/health');
 
 async function testAPI() {
   try {
     console.log('🧪 Testing UrbanCare API endpoints...\n');
+    console.log(`📍 API Base: ${API_BASE}\n`);
 
     // Test health endpoint
     console.log('1. Testing health endpoint...');
-    const healthResponse = await axios.get('http://localhost:5000/health');
+    const healthResponse = await axios.get(HEALTH_URL);
     console.log('✅ Health check:', healthResponse.data.message);
 
     // Test auth endpoints

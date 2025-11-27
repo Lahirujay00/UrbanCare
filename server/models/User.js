@@ -372,7 +372,7 @@ userSchema.methods.generateAuthToken = function() {
       role: this.role
     },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE }
+    { expiresIn: process.env.JWT_EXPIRE || '7d' }
   );
 };
 
@@ -381,7 +381,7 @@ userSchema.methods.generateRefreshToken = function() {
   return jwt.sign(
     { id: this._id },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.JWT_REFRESH_EXPIRE }
+    { expiresIn: process.env.JWT_REFRESH_EXPIRE || '30d' }
   );
 };
 
